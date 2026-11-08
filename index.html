@@ -17,12 +17,13 @@ h3{margin:10px 0 5px;font-size:11px;letter-spacing:.08em;text-transform:uppercas
 .ck{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--ln);cursor:pointer}
 .ck b{font-variant-numeric:tabular-nums;font-weight:600}
 #cl{max-height:170px;overflow:auto}
-input,textarea{width:100%;box-sizing:border-box;background:#101c30;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:7px;font:inherit;margin:3px 0}
+.st{font-size:11px;color:var(--mu);line-height:1.6}
+input{width:100%;box-sizing:border-box;background:#101c30;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:7px;font:inherit;margin:3px 0}
 button.b{background:#101c30;color:var(--tx);border:1px solid var(--ln);border-radius:14px;padding:6px 10px;font:inherit;margin:2px 2px 2px 0}
-a.lk{display:block;padding:6px 8px;margin:4px 0;background:#101c30;border:1px solid var(--ln);border-radius:8px;color:var(--tx);text-decoration:none}
-a.lk small{display:block;color:var(--mu);font-size:10px}
-#hud{position:absolute;left:10px;bottom:8px;color:#9fb4cf;font-size:11px;pointer-events:none;text-shadow:0 0 4px #000;line-height:1.5}
-#say{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:#0c1422cc;border:1px solid var(--ln);border-radius:14px;padding:5px 12px;display:none;max-width:60%}
+#hud{position:absolute;left:10px;bottom:8px;color:#9fb4cf;font-size:11px;pointer-events:none;text-shadow:0 0 4px #000}
+#say{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:#0c1422dd;border:1px solid var(--ln);border-radius:14px;padding:5px 12px;display:none;max-width:60%;text-align:center}
+#sel{position:absolute;right:10px;bottom:8px;background:#0c1422dd;border:1px solid var(--ln);border-radius:10px;padding:8px 10px;display:none;max-width:260px;line-height:1.5}
+#cur{position:fixed;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid #fff;border-radius:50%;display:none;pointer-events:none;z-index:5;box-shadow:0 0 6px #4cc9f0}
 #tp{position:absolute;left:10px;top:10px;display:flex;gap:6px}
 #tp button{width:38px;height:38px;border-radius:50%;background:#101c30cc;color:var(--tx);border:1px solid var(--ln);font-size:17px;padding:0}
 #tp button.on{background:var(--ac);color:#04121c}
@@ -30,46 +31,52 @@ a.lk small{display:block;color:var(--mu);font-size:10px}
 @media (orientation:portrait){#rotm{display:flex}}
 </style></head><body>
 <div id="rotm">&#8635; Turn your phone sideways for the full-screen globe</div>
+<div id="cur"></div>
 <div id="app">
 <div id="stage"><canvas id="c"></canvas>
-<div id="tp"><button id="vm" title="Voice">&#127908;</button><button id="sp">&#10073;&#10073;</button><button id="pz">&#9776;</button></div>
-<div id="say"></div><div id="sel" style="position:absolute;right:10px;bottom:8px;background:#0c1422dd;border:1px solid var(--ln);border-radius:10px;padding:8px 10px;display:none;max-width:260px;line-height:1.5"></div><div id="hud"></div></div>
+<div id="tp"><button id="vm">&#127908;</button><button id="hm">&#9995;</button><button id="sp">&#10073;&#10073;</button><button id="pz">&#9776;</button></div>
+<div id="say"></div><div id="sel"></div><div id="hud"></div></div>
 <div id="side">
 <h3>Layers</h3><div class="tg" id="ly"></div>
-<h3>Ask AI / voice</h3><input id="q" placeholder="e.g. show me Tokyo, hide ships"><button class="b" id="ask">Ask</button>
-<input id="ak" placeholder="Anthropic API key (stays in this browser)" type="password">
-<h3>Ships (free AIS key)</h3><input id="ais" placeholder="key from aisstream.io"><button class="b" id="ac">Connect ships</button>
+<h3>Search or command</h3><input id="q" placeholder="country, city, or a command"><button class="b" id="ask">Go</button>
 <h3>Coordinates</h3><div id="co">Tap the globe.</div>
 <button class="b" id="gm">Google Maps here</button><button class="b" id="ge">Google Earth here</button>
-<h3>Cities &amp; local time</h3><div id="cl"></div>
-<h3>Live sites</h3>
-<a class="lk" target="_blank" rel="noopener" href="https://www.flightradar24.com">Flightradar24<small>Planes</small></a>
-<a class="lk" target="_blank" rel="noopener" href="https://www.marinetraffic.com">MarineTraffic<small>Ships</small></a>
-<a class="lk" target="_blank" rel="noopener" href="https://stuffin.space">Stuff in Space<small>Satellites</small></a>
-<a class="lk" target="_blank" rel="noopener" href="https://zoom.earth">Zoom Earth<small>Weather satellite</small></a>
+<h3>Feeds</h3><div class="st" id="fd"></div>
+<h3>Major cities &amp; local time</h3><div id="cl"></div>
 </div></div>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@4.1.4/dist/satellite.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tz-lookup@6.1.25/tz.js"></script>
 <script>
+// ===== CONFIG: edit here only (nothing is shown in the app) =====
+const CFG={AIS_KEY:'f850998cd679d23dcf8afb80f32682acd0c35f36',AI_URL:''}; // AIS_KEY: free key from aisstream.io · AI_URL: your Cloudflare Worker address
+// ================================================================
 const $=id=>document.getElementById(id),D=Math.PI/180,cv=$('c'),g=cv.getContext('2d');
-let L0=20,T=22,Z=1,spin=true,W,H,R,idle=0,tgt=null,vx=0,vy=0,tapPt=null,heard='';
-const ON={pl:1,sh:1,sa:1,wx:1,sp:1,ct:1,tz:0,nt:1};
-const NM={pl:'Planes',sh:'Ships',sa:'Satellites',wx:'Weather',sp:'Space',ct:'Cities',tz:'Time zones',nt:'Day/Night'};
-const C=[['New York',40.71,-74.01,'America/New_York'],['Los Angeles',34.05,-118.24,'America/Los_Angeles'],['Chicago',41.88,-87.63,'America/Chicago'],['Mexico City',19.43,-99.13,'America/Mexico_City'],['Toronto',43.65,-79.38,'America/Toronto'],['Sao Paulo',-23.55,-46.63,'America/Sao_Paulo'],['Buenos Aires',-34.6,-58.38,'America/Argentina/Buenos_Aires'],['Bogota',4.71,-74.07,'America/Bogota'],['Lima',-12.05,-77.04,'America/Lima'],['London',51.51,-.13,'Europe/London'],['Paris',48.86,2.35,'Europe/Paris'],['Berlin',52.52,13.4,'Europe/Berlin'],['Madrid',40.42,-3.7,'Europe/Madrid'],['Rome',41.9,12.5,'Europe/Rome'],['Moscow',55.75,37.62,'Europe/Moscow'],['Istanbul',41.01,28.98,'Europe/Istanbul'],['Reykjavik',64.15,-21.94,'Atlantic/Reykjavik'],['Cairo',30.04,31.24,'Africa/Cairo'],['Lagos',6.52,3.38,'Africa/Lagos'],['Nairobi',-1.29,36.82,'Africa/Nairobi'],['Johannesburg',-26.2,28.05,'Africa/Johannesburg'],['Dubai',25.2,55.27,'Asia/Dubai'],['Riyadh',24.71,46.68,'Asia/Riyadh'],['Tehran',35.69,51.39,'Asia/Tehran'],['Karachi',24.86,67.01,'Asia/Karachi'],['Delhi',28.61,77.21,'Asia/Kolkata'],['Mumbai',19.08,72.88,'Asia/Kolkata'],['Kathmandu',27.7,85.3,'Asia/Kathmandu'],['Dhaka',23.81,90.41,'Asia/Dhaka'],['Bangkok',13.76,100.5,'Asia/Bangkok'],['Singapore',1.35,103.82,'Asia/Singapore'],['Jakarta',-6.21,106.85,'Asia/Jakarta'],['Hong Kong',22.32,114.17,'Asia/Hong_Kong'],['Beijing',39.9,116.4,'Asia/Shanghai'],['Shanghai',31.23,121.47,'Asia/Shanghai'],['Manila',14.6,120.98,'Asia/Manila'],['Seoul',37.57,126.98,'Asia/Seoul'],['Tokyo',35.68,139.65,'Asia/Tokyo'],['Sydney',-33.87,151.21,'Australia/Sydney'],['Auckland',-36.85,174.76,'Pacific/Auckland'],['Honolulu',21.31,-157.86,'Pacific/Honolulu'],['Anchorage',61.22,-149.9,'America/Anchorage']];
+let L0=20,T=22,Z=1,spin=true,W,H,R,idle=0,tgt=null,vx=0,vy=0,tapPt=null,fc=0;
+const ON={pl:1,sh:1,sa:1,wx:1,sp:1,ct:1,bd:1,tz:0,nt:1};
+const NM={pl:'Planes',sh:'Ships',sa:'Satellites',wx:'Weather',sp:'Moon',ct:'Cities',bd:'Borders',tz:'Time zones',nt:'Day/Night'};
+const C=[['New York',40.71,-74.01,'America/New_York'],['Los Angeles',34.05,-118.24,'America/Los_Angeles'],['Mexico City',19.43,-99.13,'America/Mexico_City'],['Sao Paulo',-23.55,-46.63,'America/Sao_Paulo'],['Buenos Aires',-34.6,-58.38,'America/Argentina/Buenos_Aires'],['London',51.51,-.13,'Europe/London'],['Paris',48.86,2.35,'Europe/Paris'],['Moscow',55.75,37.62,'Europe/Moscow'],['Cairo',30.04,31.24,'Africa/Cairo'],['Lagos',6.52,3.38,'Africa/Lagos'],['Johannesburg',-26.2,28.05,'Africa/Johannesburg'],['Dubai',25.2,55.27,'Asia/Dubai'],['Delhi',28.61,77.21,'Asia/Kolkata'],['Dhaka',23.81,90.41,'Asia/Dhaka'],['Bangkok',13.76,100.5,'Asia/Bangkok'],['Singapore',1.35,103.82,'Asia/Singapore'],['Beijing',39.9,116.4,'Asia/Shanghai'],['Seoul',37.57,126.98,'Asia/Seoul'],['Tokyo',35.68,139.65,'Asia/Tokyo'],['Sydney',-33.87,151.21,'Australia/Sydney'],['Auckland',-36.85,174.76,'Pacific/Auckland'],['Honolulu',21.31,-157.86,'Pacific/Honolulu']];
 const tmc={};const tm=z=>{const k=Math.floor(Date.now()/5000),c=tmc[z];if(c&&c[0]===k)return c[1];const v=new Date().toLocaleTimeString('en-GB',{timeZone:z,hour:'2-digit',minute:'2-digit'});tmc[z]=[k,v];return v};
+const fmt=(a,b)=>`${Math.abs(a).toFixed(2)}°${a>=0?'N':'S'} ${Math.abs(b).toFixed(2)}°${b>=0?'E':'W'}`;
+function ptz(p){if(p.tz===undefined){try{p.tz=tzlookup(p.lat,p.lon)}catch(e){p.tz=null}}return p.tz}
+function lt(p){const z=ptz(p);if(z)try{return tm(z)}catch(e){}const h=((new Date().getUTCHours()+new Date().getUTCMinutes()/60+p.lon/15)+24)%24;return '≈'+String(Math.floor(h)).padStart(2,'0')+':'+String(Math.floor(h%1*60)).padStart(2,'0')}
 function rs(){const dp=devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dp;cv.height=H*dp;g.setTransform(dp,0,0,dp,0,0)}
 addEventListener('resize',rs);addEventListener('orientationchange',()=>setTimeout(rs,300));rs();
+const pj=d3.geoOrthographic().clipAngle(90).precision(.6),pth=d3.geoPath(pj,g),GRAT=d3.geoGraticule10();
 function P(lat,lon,r=1){const f=lat*D,l=(lon-L0)*D,t=T*D,x=r*Math.cos(f)*Math.sin(l),y=r*Math.sin(f),z=r*Math.cos(f)*Math.cos(l);
  const y2=y*Math.cos(t)-z*Math.sin(t),z2=y*Math.sin(t)+z*Math.cos(t);return{x:W/2+x*R,y:H/2-y2*R,z:z2,u:x,w:y2,v:z2>0||(x*x+y2*y2>1)}}
-function line(a,close){g.beginPath();let pen=false;for(const p of a){if(p.v){pen?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);pen=true}else pen=false}if(close)g.closePath()}
-// ---- real coastlines (Natural Earth via world-atlas), crude fallback ----
-let land=[[[66,-168],[70,-125],[72,-95],[63,-80],[58,-62],[48,-55],[42,-70],[30,-80],[26,-97],[22,-105],[32,-117],[42,-125],[58,-140]].map(a=>[a[1],a[0]]),[[10,-78],[10,-60],[-6,-35],[-22,-40],[-38,-58],[-55,-68],[-40,-75],[-15,-72],[-3,-81]].map(a=>[a[1],a[0]])];
-fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json').then(r=>r.json()).then(t=>{const f=topojson.feature(t,t.objects.land),gs=f.features?f.features.map(x=>x.geometry):[f.geometry],o=[];
- for(const ge of gs)for(const p of(ge.type==='Polygon'?[ge.coordinates]:ge.coordinates))o.push(p[0]);land=o}).catch(()=>{});
-function landPath(ring){g.beginPath();ring.forEach((q,i)=>{const p=P(q[1],q[0]);let x=p.x,y=p.y;if(p.z<0&&!p.v||p.z<0){const m=Math.hypot(p.u,p.w)||1;x=W/2+p.u/m*R;y=H/2-p.w/m*R}i?g.lineTo(x,y):g.moveTo(x,y)});g.closePath()}
-// ---- real data only ----
+function line(a){g.beginPath();let pen=false;for(const p of a){if(p.v){pen?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);pen=true}else pen=false}}
+// ---- world data (free, no key) ----
+let LAND=null,BORD=null,CTRY=[],PLACES=[];
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json').then(r=>r.json()).then(t=>{LAND=topojson.feature(t,t.objects.land);BORD=topojson.mesh(t,t.objects.countries,(a,b)=>a!==b);
+ CTRY=topojson.feature(t,t.objects.countries).features.map(f=>({n:f.properties.name,f,c:d3.geoCentroid(f),a:d3.geoArea(f)}))}).catch(()=>{});
+fetch('https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.2/geojson/ne_10m_populated_places_simple.geojson').then(r=>r.json()).then(j=>{const by={};
+ for(const f of j.features){const p=f.properties,k=p.adm0_a3;(by[k]=by[k]||[]).push({n:p.nameascii||p.name,lat:p.latitude,lon:p.longitude,pop:p.pop_max||0,cap:/Admin-0 (region )?capital/.test(p.featurecla),cc:p.adm0name})}
+ for(const k in by){const a=by[k].sort((x,y)=>y.pop-x.pop),cap=a.find(x=>x.cap),rest=a.filter(x=>x!==cap).slice(0,5);if(cap){cap.cap=1;PLACES.push(cap)}rest.forEach(x=>{x.cap=0;PLACES.push(x)})}}).catch(()=>{});
+// ---- real live data ----
 const SPD=ms=>`${(ms*3.6).toFixed(0)} km/h · ${(ms*1.944).toFixed(0)} kt`;
-const air=new Map(),sea=new Map();let sats=[],wx=[],wxOK=0,sel=null,scr=[],fc=0;const msg={pl:'loading…',sh:'needs free AIS key (left panel)',sa:'loading…'};
+const air=new Map(),sea=new Map();let sats=[],wx=[],wxOK=0,sel=null,scr=[],pls=[];const msg={pl:'loading…',sh:CFG.AIS_KEY?'connecting…':'off (no AIS key in code)',sa:'loading…'};
 function ingest(list,mil){const now=Date.now();for(const a of list){if(a.lat==null||a.lon==null)continue;const p=air.get(a.hex),ft=typeof a.alt_baro==='number'?a.alt_baro:0;
  const o={k:'pl',id:a.hex,lat:a.lat,lon:a.lon,ft,gs:a.gs,trk:a.track,n:(a.flight||'').trim()||a.r||a.hex,reg:a.r,type:a.t,mil:mil||(p&&p.mil),ts:now,tr:p?p.tr:[]};
  if(!o.tr.length||o.tr[o.tr.length-1][0]!==a.lat)o.tr.push([a.lat,a.lon]);if(o.tr.length>40)o.tr.shift();air.set(a.hex,o)}
@@ -84,11 +91,11 @@ async function getSat(){try{const out=[];for(const grp of['stations','visual','g
  if(!out.length)throw 0;sats=out;msg.sa='live orbits · '+out.length}catch(e){msg.sa='feed offline'}}
 function satPos(s,d,gm){const pv=satellite.propagate(s.rec,d);if(!pv.position)return false;const gd=satellite.eciToGeodetic(pv.position,gm);s.lat=satellite.degreesLat(gd.latitude);s.lon=satellite.degreesLong(gd.longitude);s.h=gd.height;s.v=Math.hypot(pv.velocity.x,pv.velocity.y,pv.velocity.z);return true}
 const satR=h=>1+Math.log10(1+h/1000)*.12;
-let ws;function conn(){const k=$('ais').value.trim();if(!k){msg.sh='needs free AIS key (left panel)';return}try{localStorage.setItem('ais',k)}catch(e){}if(ws)ws.close();ws=new WebSocket('wss://stream.aisstream.io/v0/stream');
- ws.onopen=()=>{ws.send(JSON.stringify({APIKey:k,BoundingBoxes:[[[-90,-180],[90,180]]],FilterMessageTypes:['PositionReport']}));msg.sh='connected · waiting for ships'};
+let ws;function conn(){const k=CFG.AIS_KEY;if(!k)return;ws=new WebSocket('wss://stream.aisstream.io/v0/stream');
+ ws.onopen=()=>{ws.send(JSON.stringify({APIKey:k,BoundingBoxes:[[[-90,-180],[90,180]]],FilterMessageTypes:['PositionReport']}));msg.sh='connected · waiting'};
  ws.onmessage=e=>{try{const m=JSON.parse(e.data),p=m.Message.PositionReport,id=m.MetaData.MMSI,o=sea.get(id),v={k:'sh',id,lat:p.Latitude,lon:p.Longitude,n:(m.MetaData.ShipName||'').trim()||String(id),sog:p.Sog,cog:p.Cog,tr:o?o.tr:[]};
   v.tr.push([v.lat,v.lon]);if(v.tr.length>30)v.tr.shift();sea.set(id,v);if(sea.size>4000)sea.delete(sea.keys().next().value);msg.sh='live · '+sea.size+' ships'}catch(x){}};
- ws.onerror=()=>{msg.sh='AIS error or blocked'};ws.onclose=()=>{}}
+ ws.onerror=()=>{msg.sh='AIS error or blocked'}}
 async function getWx(){try{const la=[],lo=[];for(let a=-75;a<=75;a+=15)for(let b=-180;b<180;b+=15){la.push(a);lo.push(b)}
  const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,wind_speed_10m,wind_direction_10m,pressure_msl`).then(r=>r.json());
  wx=(Array.isArray(r)?r:[r]).map(x=>({lat:x.latitude,lon:x.longitude,w:x.current.wind_speed_10m,d:x.current.wind_direction_10m,t:x.current.temperature_2m,p:x.current.pressure_msl}));wxOK=1}catch(e){wxOK=0}}
@@ -98,9 +105,9 @@ function card(o){const e=$('sel');if(!o){e.style.display='none';return}e.style.d
  if(o.k==='sh')h+=`Speed ${SPD(o.sog*.5144)}<br>Course ${o.cog}° · MMSI ${o.id}`;
  if(o.k==='sa')h+=`Speed ${o.v.toFixed(2)} km/s (${Math.round(o.v*3600).toLocaleString()} km/h)<br>Altitude ${Math.round(o.h)} km · orbit ${(2*Math.PI/o.rec.no).toFixed(0)} min`;
  e.innerHTML=h}
-// ---- space: stars + Moon only ----
+// ---- Moon ----
 const stars=Array.from({length:140},()=>[Math.random(),Math.random(),Math.random()*1.2+.3]),ob=23.44*D;
-function eq(lam,bet,gm){const x=Math.cos(bet)*Math.cos(lam),y=Math.cos(bet)*Math.sin(lam),z=Math.sin(bet),Y=y*Math.cos(ob)-z*Math.sin(ob),Z=y*Math.sin(ob)+z*Math.cos(ob);return[Math.asin(Z)/D,Math.atan2(Y,x)/D-gm]}
+function eq(lam,bet,gm){const x=Math.cos(bet)*Math.cos(lam),y=Math.cos(bet)*Math.sin(lam),z=Math.sin(bet),Y=y*Math.cos(ob)-z*Math.sin(ob),Z_=y*Math.sin(ob)+z*Math.cos(ob);return[Math.asin(Z_)/D,Math.atan2(Y,x)/D-gm]}
 function drawMoon(d,gm,after){const Le=(100.46+.9856474*d)*D,M=(134.963+13.064993*d)*D,F=(93.272+13.22935*d)*D,ml=(218.316+13.176396*d+6.289*Math.sin(M))*D,mb=5.128*Math.sin(F)*D,e=eq(ml,mb,gm),q=P(e[0],e[1],1.5);
  if(after?!(q.z>0&&q.u*q.u+q.w*q.w>1):!(q.z<=0))return;
  const el=ml-(Le+Math.PI),k=Math.cos(el),ill=(1-k)/2,r=Math.max(11,Math.min(22,R*.085));
@@ -111,32 +118,33 @@ function drawMoon(d,gm,after){const Le=(100.46+.9856474*d)*D,M=(134.963+13.06499
  const mg=g.createRadialGradient(-r*.3,-r*.3,r*.1,0,0,r);mg.addColorStop(0,'#f4f5f7');mg.addColorStop(1,'#b9bcc4');g.fillStyle=mg;g.fillRect(-r,-r,2*r,2*r);
  g.fillStyle='rgba(120,125,135,.45)';for(const c of[[-.35,-.25,.22],[.3,.1,.17],[-.1,.45,.2],[.45,-.4,.12],[-.5,.3,.13]]){g.beginPath();g.arc(c[0]*r,c[1]*r,c[2]*r,0,7);g.fill()}
  g.restore();g.strokeStyle='rgba(200,210,225,.35)';g.lineWidth=1;g.beginPath();g.arc(0,0,r,0,7);g.stroke();
- g.fillStyle='#9fb4cf';g.font='10px system-ui';g.fillText('Moon '+Math.round(ill*100)+'% lit',r+5,3);g.restore()}
+ g.fillStyle='#9fb4cf';g.font='10px system-ui';g.fillText('Moon '+Math.round(ill*100)+'%',r+5,3);g.restore()}
 // ---- frame ----
 function frame(now){const t=now/1000;
  if(tgt){L0+=(tgt.L-L0)*.08;T+=(tgt.T-T)*.08;Z+=(tgt.Z-Z)*.08;if(Math.abs(tgt.L-L0)<.05&&Math.abs(tgt.Z-Z)<.01)tgt=null}
  else{if(Math.abs(vx)>.002||Math.abs(vy)>.002){L0-=vx;T=Math.max(-85,Math.min(85,T+vy));vx*=.94;vy*=.94}else if(spin&&performance.now()-idle>3000)L0+=.04}
- L0=((L0+540)%360)-180;R=Math.min(W,H)*.4*Z;const cx=W/2,cy=H/2;
+ L0=((L0+540)%360)-180;R=Math.min(W,H)*.4*Z;const cx=W/2,cy=H/2;pj.rotate([-L0,-T,0]).scale(R).translate([cx,cy]);
  g.fillStyle='#05080f';g.fillRect(0,0,W,H);
  if(ON.sp){g.fillStyle='#9fb4cf';for(const s of stars){g.globalAlpha=.25+s[2]*.3;g.fillRect(s[0]*W,s[1]*H,s[2],s[2])}g.globalAlpha=1}
  const jd=Date.now()/864e5+2440587.5,d=jd-2451545,gm=(280.46061837+360.98564736629*d)%360;
  if(ON.sp)drawMoon(d,gm,false);
  const gl=g.createRadialGradient(cx,cy,R*.95,cx,cy,R*1.18);gl.addColorStop(0,'rgba(76,201,240,.35)');gl.addColorStop(1,'rgba(76,201,240,0)');g.fillStyle=gl;g.beginPath();g.arc(cx,cy,R*1.18,0,7);g.fill();
  const sg=g.createRadialGradient(cx-R*.3,cy-R*.3,R*.1,cx,cy,R);sg.addColorStop(0,'#16406e');sg.addColorStop(1,'#071b36');g.fillStyle=sg;g.beginPath();g.arc(cx,cy,R,0,7);g.fill();
- g.save();g.beginPath();g.arc(cx,cy,R,0,7);g.clip();
- g.strokeStyle='rgba(120,170,220,.16)';g.lineWidth=1;
- for(let lo=-180;lo<180;lo+=30){const a=[];for(let la=-85;la<=85;la+=5)a.push(P(la,lo));line(a);g.stroke()}
- for(let la=-60;la<=60;la+=30){const a=[];for(let lo=-180;lo<=180;lo+=5)a.push(P(la,lo));line(a);g.stroke()}
- g.fillStyle='#2f6b4f';g.strokeStyle='#6fcf97';g.lineWidth=1;for(const ring of land){landPath(ring);g.globalAlpha=.75;g.fill();g.globalAlpha=1;g.stroke()}
- g.restore();
+ g.lineWidth=1;g.strokeStyle='rgba(120,170,220,.14)';g.beginPath();pth(GRAT);g.stroke();
+ if(LAND){g.beginPath();pth(LAND);g.fillStyle='rgba(47,107,79,.88)';g.fill();g.strokeStyle='#6fcf97';g.stroke()}
+ if(LAND&&ON.bd&&BORD){g.beginPath();pth(BORD);g.strokeStyle='rgba(225,240,232,.32)';g.lineWidth=.6;g.stroke();g.lineWidth=1}
  const dt=new Date(),ut=dt.getUTCHours()+dt.getUTCMinutes()/60,doy=(dt-Date.UTC(dt.getUTCFullYear(),0,0))/864e5,sLon=-(ut-12)*15,sLat=23.44*Math.sin(2*Math.PI*(doy-81)/365);
- if(ON.nt){g.fillStyle='rgba(0,0,10,.5)';for(let la=-88;la<=88;la+=4)for(let lo=-180;lo<180;lo+=4){const c=Math.sin(la*D)*Math.sin(sLat*D)+Math.cos(la*D)*Math.cos(sLat*D)*Math.cos((lo-sLon)*D);if(c<0){const p=P(la,lo);if(p.v)g.fillRect(p.x-R*.03,p.y-R*.03,R*.06,R*.06)}}}
- if(ON.tz){g.strokeStyle='rgba(255,200,90,.55)';g.setLineDash([4,4]);g.fillStyle='#ffd27a';g.font='10px system-ui';for(let k=-12;k<=12;k++){const a=[];for(let la=-80;la<=80;la+=5)a.push(P(la,k*15));line(a);g.stroke();const q=P(8,k*15);if(q.v)g.fillText('UTC'+(k>=0?'+':'')+k,q.x+2,q.y)}g.setLineDash([])}
-
- scr=[];
+ if(ON.nt){g.beginPath();pth(d3.geoCircle().center([sLon+180,-sLat]).radius(90)());g.fillStyle='rgba(0,0,12,.5)';g.fill()}
+ if(ON.tz){g.strokeStyle='rgba(255,200,90,.55)';g.setLineDash([4,4]);g.fillStyle='#ffd27a';g.font='10px system-ui';for(let k=-12;k<=12;k++){g.beginPath();pth({type:'LineString',coordinates:Array.from({length:35},(_,i)=>[k*15,-85+i*5])});g.stroke();const q=P(8,k*15);if(q.v)g.fillText('UTC'+(k>=0?'+':'')+k,q.x+2,q.y)}g.setLineDash([])}
+ scr=[];pls=[];
  if(ON.wx&&wxOK)for(const c of wx){const a=P(c.lat,c.lon);if(!a.v)continue;g.strokeStyle=`hsla(${Math.max(0,120-c.w*2.4)},90%,62%,.9)`;g.lineWidth=1.2;const ang=(c.d+180)*D,len=4+Math.min(c.w,60)*.28;
    g.beginPath();g.moveTo(a.x,a.y);g.lineTo(a.x+Math.sin(ang)*len,a.y-Math.cos(ang)*len);g.stroke();g.fillStyle=g.strokeStyle;g.fillRect(a.x-1,a.y-1,2,2);
    if(c.p<1000&&c.w>35){g.strokeStyle='rgba(255,90,90,'+(.8-.5*((t%2)/2))+')';g.beginPath();g.arc(a.x,a.y,6+(t%2)*6,0,7);g.stroke()}}
+ if(ON.ct){g.font='10px system-ui';const lab=Z>1.3;
+  if(Z>1.6&&CTRY.length){g.fillStyle='rgba(215,235,255,.5)';g.textAlign='center';for(const c of CTRY){if(c.a*Z*Z<.005)continue;const p=pj(c.c);if(p)g.fillText(c.n,p[0],p[1])}g.textAlign='left'}
+  for(const p of PLACES){if(!p.cap&&Z<2.8)continue;const q=pj([p.lon,p.lat]);if(!q)continue;g.fillStyle=p.cap?'#fff':'#bcd';const s=p.cap?2.2:1.5;g.beginPath();g.arc(q[0],q[1],s,0,7);g.fill();pls.push([q[0],q[1],p]);
+   if(p.cap?lab:Z>3.2){g.fillStyle='#d7e8ff';g.fillText(p.n+(Z>2.6?' '+lt(p):''),q[0]+4,q[1]-3)}}
+  if(!PLACES.length)for(const c of C){const p=P(c[1],c[2]);if(p.v){g.fillStyle='#fff';g.fillRect(p.x-1.5,p.y-1.5,3,3);g.fillStyle='#d7e8ff';g.fillText(c[0],p.x+4,p.y-3)}}}
  if(ON.sh)for(const o of sea.values()){const p=P(o.lat,o.lon,1.004);if(p.v){g.fillStyle='#4aa3ff';g.beginPath();g.moveTo(p.x,p.y-4);g.lineTo(p.x+3.5,p.y+3);g.lineTo(p.x-3.5,p.y+3);g.fill();scr.push([p.x,p.y,o])}}
  if(ON.pl)for(const o of air.values()){const p=P(o.lat,o.lon,1.01);if(!p.v)continue;const h=(o.trk||0)*D;g.fillStyle=o.mil?'#ff4d4d':'#4cc9f0';g.beginPath();
    g.moveTo(p.x+Math.sin(h)*(o.mil?6:4.5),p.y-Math.cos(h)*(o.mil?6:4.5));g.lineTo(p.x+Math.sin(h+2.6)*3,p.y-Math.cos(h+2.6)*3);g.lineTo(p.x+Math.sin(h-2.6)*3,p.y-Math.cos(h-2.6)*3);g.fill();scr.push([p.x,p.y,o])}
@@ -145,62 +153,78 @@ function frame(now){const t=now/1000;
   if(so){if(so.k==='sa'){const per=2*Math.PI/so.rec.no,a=[],st_=Math.max(1,per/90);for(let m=0;m<=Math.min(per,1500);m+=st_){const dd=new Date(Date.now()+m*6e4),pv=satellite.propagate(so.rec,dd);if(!pv.position)continue;const gd=satellite.eciToGeodetic(pv.position,satellite.gstime(dd));a.push(P(satellite.degreesLat(gd.latitude),satellite.degreesLong(gd.longitude),satR(gd.height)))}g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1.2;line(a);g.stroke()}
    else if(so.tr.length>1){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=1.5;line(so.tr.map(q=>P(q[0],q[1],1.01)));g.stroke()}
    const p=P(so.lat,so.lon,so.k==='sa'?satR(so.h):1.01);if(p.v){g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(p.x,p.y,10,0,7);g.stroke()}}}
- if(ON.ct){g.font='10px system-ui';C.forEach((c,i)=>{const p=P(c[1],c[2]);if(!p.v)return;g.fillStyle='#fff';g.fillRect(p.x-1.5,p.y-1.5,3,3);if(i<14||Z>1.5){g.fillStyle='#d7e8ff';g.fillText(c[0]+(Z>1.2?' '+tm(c[3]):''),p.x+4,p.y-3)}})}
- {const p=P(sLat,sLon,1.02);if(p.v){g.fillStyle='#ffd24a';g.beginPath();g.arc(p.x,p.y,4,0,7);g.fill()}}
+ if(ON.nt){const p=P(sLat,sLon,1.02);if(p.v){g.fillStyle='#ffd24a';g.beginPath();g.arc(p.x,p.y,4,0,7);g.fill()}}
  if(tapPt){const p=P(tapPt[0],tapPt[1]);if(p.v){g.strokeStyle='#fff';g.lineWidth=1.5;g.beginPath();g.arc(p.x,p.y,7,0,7);g.moveTo(p.x-12,p.y);g.lineTo(p.x+12,p.y);g.moveTo(p.x,p.y-12);g.lineTo(p.x,p.y+12);g.stroke()}}
  if(ON.sp)drawMoon(d,gm,true);
- $('hud').innerHTML=`CENTER ${fmt(T,L0)} · ZOOM ${Z.toFixed(1)}×<br>✈ ${msg.pl}<br>🚢 ${msg.sh}<br>🛰 ${msg.sa}<br>☁ weather ${wxOK?'live':'offline'}${heard?'<br>🎤 '+heard:''}`;
- if(fc++%15===0)card(so);
+ $('hud').textContent=`${fmt(T,L0)} · ${Z.toFixed(1)}×`;
+ if(fc++%15===0){card(so);if(fc%60===1)$('fd').innerHTML=`✈ ${msg.pl}<br>🚢 ${msg.sh}<br>🛰 ${msg.sa}<br>☁ weather ${wxOK?'live':'offline'}<br>🗺 ${PLACES.length?PLACES.length+' places':'loading cities…'}`}
  requestAnimationFrame(frame)}
-const fmt=(a,b)=>`${Math.abs(a).toFixed(2)}°${a>=0?'N':'S'} ${Math.abs(b).toFixed(2)}°${b>=0?'E':'W'}`;
-// ---- touch: 1 finger rotates 1:1 with momentum, 2 fingers pinch zoom ----
+// ---- touch ----
 const ptr=new Map();let pd=0,mv=0,down=null;
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);if(ptr.size===1){mv=0;down=[e.clientX,e.clientY]}vx=vy=0;tgt=null;idle=performance.now();pd=0});
 cv.addEventListener('pointermove',e=>{if(!ptr.has(e.pointerId))return;const o=ptr.get(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);idle=performance.now();
  if(ptr.size===1){const dx=e.clientX-o[0],dy=e.clientY-o[1];mv+=Math.abs(dx)+Math.abs(dy);const k=1/(R*Math.max(.25,Math.cos(T*D)))/D;vx=dx*k;vy=dy/R/D;L0-=vx;T=Math.max(-85,Math.min(85,T+vy))}
- else if(ptr.size===2){const v=[...ptr.values()],dd=Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1]);if(pd)Z=Math.max(.5,Math.min(8,Z*dd/pd));pd=dd;vx=vy=0}});
+ else if(ptr.size===2){const v=[...ptr.values()],dd=Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1]);if(pd)Z=Math.max(.5,Math.min(9,Z*dd/pd));pd=dd;vx=vy=0}});
 const up=e=>{const was=ptr.size;ptr.delete(e.pointerId);pd=0;if(was===1&&mv<8&&down){tap(e.clientX,e.clientY);vx=vy=0}};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{ptr.delete(e.pointerId)});
-cv.addEventListener('wheel',e=>{e.preventDefault();Z=Math.max(.5,Math.min(8,Z*(e.deltaY<0?1.1:.9)))},{passive:false});
+cv.addEventListener('wheel',e=>{e.preventDefault();Z=Math.max(.5,Math.min(9,Z*(e.deltaY<0?1.1:.9)))},{passive:false});
 function tap(px,py){const r=cv.getBoundingClientRect(),X=px-r.left,Y=py-r.top;let b=null,bd=20;for(const q of scr){const dd=Math.hypot(q[0]-X,q[1]-Y);if(dd<bd){bd=dd;b=q[2]}}
  if(b){sel=b;tapPt=null;card(b);return}sel=null;card(null);
- const x=(X-W/2)/R,y=(H/2-Y)/R;if(x*x+y*y>1)return;const z=Math.sqrt(1-x*x-y*y),t=T*D,y1=y*Math.cos(t)+z*Math.sin(t),z1=-y*Math.sin(t)+z*Math.cos(t),lat=Math.asin(y1)/D,lon=((L0+Math.atan2(x,z1)/D+540)%360)-180;
- tapPt=[lat,lon];const h=(((new Date().getUTCHours()+new Date().getUTCMinutes()/60)+lon/15)+24)%24,nc=C.map(c=>[Math.hypot(c[1]-lat,(c[2]-lon)*Math.cos(lat*D)),c]).sort((a,b)=>a[0]-b[0])[0];
- $('co').innerHTML=`<b>${fmt(lat,lon)}</b><br>Solar time ≈ ${String(Math.floor(h)).padStart(2,'0')}:${String(Math.floor(h%1*60)).padStart(2,'0')}<br>Nearest city: ${nc[1][0]} (${tm(nc[1][3])})`}
-// ---- panel, layers, clocks ----
+ const iv=pj.invert([X,Y]);if(!iv||isNaN(iv[0]))return;const lon=iv[0],lat=iv[1];tapPt=[lat,lon];
+ let pc=null,pb=1e9;for(const q of pls){const dd=Math.hypot(q[0]-X,q[1]-Y);if(dd<pb){pb=dd;pc=q[2]}}if(pb>30)pc=null;
+ let co='';for(const c of CTRY)if(d3.geoContains(c.f,[lon,lat])){co=c.n;break}
+ $('co').innerHTML=`<b>${fmt(lat,lon)}</b><br>${co||'Ocean'}${pc?`<br>${pc.n} · local time ${lt(pc)}`:''}`;$('side').classList.remove('hide')}
+// ---- panel ----
 $('ly').innerHTML=Object.keys(NM).map(k=>`<button class="chip${ON[k]?' on':''}" id="ly_${k}">${NM[k]}</button>`).join('');
 for(const k in NM)$('ly_'+k).onclick=()=>setL(k,!ON[k]);
-function setL(k,v){ON[k]=v?1:0;$('ly_'+k).classList.toggle('on',!!ON[k]);}
-$('sp').onclick=()=>{spin=!spin;$('sp').innerHTML=spin?'&#10073;&#10073;':'&#9654;'};
+function setL(k,v){ON[k]=v?1:0;$('ly_'+k).classList.toggle('on',!!ON[k])}
+$('sp').onclick=()=>setSpin(!spin);function setSpin(v){spin=v;$('sp').innerHTML=spin?'&#10073;&#10073;':'&#9654;'}
 $('pz').onclick=()=>{$('side').classList.toggle('hide');setTimeout(rs,50)};
 $('cl').innerHTML=C.map((c,i)=>`<div class="ck" data-i="${i}"><span>${c[0]}</span><b id="t${i}"></b></div>`).join('');
-$('cl').onclick=e=>{const r=e.target.closest('.ck');if(r)goto(C[+r.dataset.i][1],C[+r.dataset.i][2],1.8)};
+$('cl').onclick=e=>{const r=e.target.closest('.ck');if(r)goto(C[+r.dataset.i][1],C[+r.dataset.i][2],3)};
 setInterval(()=>C.forEach((c,i)=>$('t'+i).textContent=tm(c[3])),1000);
-function goto(lat,lon,z){tgt={L:lon,T:Math.max(-70,Math.min(70,lat)),Z:z||1.8};spin=false;$('sp').innerHTML='&#9654;'}
+function goto(lat,lon,z){tgt={L:lon,T:Math.max(-70,Math.min(70,lat)),Z:z||2};setSpin(false)}
 $('gm').onclick=()=>open(`https://www.google.com/maps/@${T.toFixed(5)},${L0.toFixed(5)},${Math.round(3+Z*2)}z/data=!3m1!1e3`,'_blank');
 $('ge').onclick=()=>open(`https://earth.google.com/web/@${T.toFixed(5)},${L0.toFixed(5)},0a,${Math.round(20000000/Z)}d,35y,0h,0t,0r`,'_blank');
-// ---- voice ----
-const KW={planes:'pl',plane:'pl',aircraft:'pl',ships:'sh',ship:'sh',satellites:'sa',satellite:'sa',weather:'wx',wind:'wx',space:'sp',cities:'ct',city:'ct','time zones':'tz','time zone':'tz',night:'nt'};
-function say(m){const s=$('say');s.textContent=m;s.style.display='block';clearTimeout(say.t);say.t=setTimeout(()=>s.style.display='none',5000)}
-function cmd(tx){tx=tx.toLowerCase().trim();heard=tx;
- if(/zoom in|closer|bigger/.test(tx)){tgt={L:L0,T:T,Z:Math.min(8,Z*1.6)};return}if(/zoom out|farther|further|smaller/.test(tx)){tgt={L:L0,T:T,Z:Math.max(.5,Z/1.6)};return}
- if(/rotate left|turn left/.test(tx)){tgt={L:L0-40,T:T,Z:Z};return}if(/rotate right|turn right/.test(tx)){tgt={L:L0+40,T:T,Z:Z};return}
- if(/stop|pause/.test(tx)){spin=false;$('sp').innerHTML='&#9654;';return}if(/spin|start|rotate$/.test(tx)){spin=true;$('sp').innerHTML='&#10073;&#10073;';return}
- if(/reset/.test(tx)){goto(22,20,1);return}
- const on=/\b(show|turn on|enable|add)\b/.test(tx),off=/\b(hide|turn off|disable|remove)\b/.test(tx);
+function say(m,ms){const s=$('say');s.textContent=m;s.style.display='block';clearTimeout(say.t);say.t=setTimeout(()=>s.style.display='none',ms||4000)}
+// ---- commands (voice, typing, AI) ----
+const KW={planes:'pl',plane:'pl',aircraft:'pl',flights:'pl',ships:'sh',ship:'sh',satellites:'sa',satellite:'sa',weather:'wx',wind:'wx',moon:'sp',stars:'sp',cities:'ct',city:'ct',borders:'bd',border:'bd',countries:'bd','time zones':'tz','time zone':'tz',night:'nt','day night':'nt'};
+function findPlace(tx){const s=' '+tx.replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ')+' ';let best=null,bl=0;
+ for(const p of PLACES){const n=p.n.toLowerCase();if(n.length>bl&&s.includes(' '+n+' ')){best={lat:p.lon!==undefined?p.lat:0,lon:p.lon,z:4,p};bl=n.length}}
+ for(const c of CTRY){const n=c.n.toLowerCase();if(n.length>=bl&&s.includes(' '+n+' ')){best={lat:c.c[1],lon:c.c[0],z:Math.max(1.2,Math.min(6,.85/Math.sqrt(c.a))),c};bl=n.length}}
+ for(const c of C){const n=c[0].toLowerCase();if(n.length>bl&&s.includes(' '+n+' ')){best={lat:c[1],lon:c[2],z:4,p:{n:c[0],lat:c[1],lon:c[2],tz:c[3]}};bl=n.length}}return best}
+function cmd(tx){tx=tx.toLowerCase().trim();if(!tx)return;
+ if(/zoom in|closer|bigger/.test(tx)){tgt={L:L0,T,Z:Math.min(9,Z*1.7)};return}if(/zoom out|farther|further|smaller/.test(tx)){tgt={L:L0,T,Z:Math.max(.5,Z/1.7)};return}
+ if(/rotate left|turn left/.test(tx)){tgt={L:L0-40,T,Z};return}if(/rotate right|turn right/.test(tx)){tgt={L:L0+40,T,Z};return}
+ if(/\b(stop|pause|freeze)\b/.test(tx)){setSpin(false);return}if(/\b(spin|start|resume|rotate)\b/.test(tx)&&!/show|hide/.test(tx)){setSpin(true);return}
+ if(/reset|home/.test(tx)){goto(22,20,1);return}
+ const on=/\b(show|turn on|enable|add|display)\b/.test(tx),off=/\b(hide|turn off|disable|remove)\b/.test(tx);
  if(on||off){for(const w in KW)if(tx.includes(w)){setL(KW[w],on&&!off);return}}
- const c=C.find(c=>tx.includes(c[0].toLowerCase()));if(c){goto(c[1],c[2],2);return}
- const m=tx.match(/(-?\d+(\.\d+)?)[ ,]+(-?\d+(\.\d+)?)/);if(m){goto(+m[1],+m[3],2);return}
- ask(tx)}
+ const pl=findPlace(tx);if(pl){if(/time/.test(tx)&&pl.p){say(pl.p.n+': '+lt(pl.p),5000)}goto(pl.lat,pl.lon,pl.z);return}
+ const m=tx.match(/(-?\d+(\.\d+)?)[ ,]+(-?\d+(\.\d+)?)/);if(m){goto(+m[1],+m[3],3);return}
+ ai(tx)}
+async function ai(q){if(!CFG.AI_URL){say('I did not understand that');return}say('Thinking…',8000);
+ try{const o=await(await fetch(CFG.AI_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({q,ctx:{lat:+T.toFixed(2),lon:+L0.toFixed(2),zoom:+Z.toFixed(1),layers:ON}})})).json();
+  if(o.say)say(o.say,7000);if(o.goto)goto(o.goto.lat,o.goto.lng,o.goto.zoom||2);if(o.zoom)tgt={L:L0,T,Z:Math.max(.5,Math.min(9,Z*o.zoom))};if(o.layers)for(const x in o.layers)if(NM[x])setL(x,o.layers[x]);if(o.spin!=null)setSpin(!!o.spin)}catch(e){say('AI is not reachable')}}
+$('ask').onclick=()=>{cmd($('q').value);$('q').value=''};$('q').onkeydown=e=>{if(e.key==='Enter')$('ask').click()};
+// ---- voice ----
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec,vOn=0;
-$('vm').onclick=()=>{if(!SR){say('Voice not supported in this browser (use Chrome)');return}
- if(vOn){vOn=0;rec.stop();$('vm').classList.remove('on');return}
- rec=new SR();rec.continuous=true;rec.lang='en-US';rec.onresult=e=>{cmd(e.results[e.results.length-1][0].transcript)};rec.onend=()=>{if(vOn)try{rec.start()}catch(x){}};vOn=1;rec.start();$('vm').classList.add('on');say('Listening… try “go to Tokyo”, “zoom in”, “hide ships”')};
-// ---- AI (Claude API; key stays in your browser) ----
-try{$('ak').value=localStorage.getItem('ak')||''}catch(e){}
-async function ask(q){const k=$('ak').value.trim();q=q||$('q').value;if(!q)return;if(!k){say('Add your Anthropic API key in the AI box to use AI');return}try{localStorage.setItem('ak',k)}catch(e){}
- say('Thinking…');try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-  body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:400,system:'You are the assistant of a 3D Earth globe. Reply ONLY with JSON: {"say":"short answer","goto":{"lat":number,"lng":number}|null,"layers":{"pl":bool,"sh":bool,"sa":bool,"wx":bool,"sp":bool,"ct":bool,"tz":bool,"nt":bool}|null}. Include only layers to change.',messages:[{role:'user',content:q+' (globe center '+fmt(T,L0)+')'}]})}),j=await r.json(),tx=j.content[0].text,o=JSON.parse(tx.slice(tx.indexOf('{'),tx.lastIndexOf('}')+1));
-  say(o.say||'Done');if(o.goto)goto(o.goto.lat,o.goto.lng,2);if(o.layers)for(const x in o.layers)if(NM[x])setL(x,o.layers[x])}catch(e){say('AI error: '+e.message)}}
-$('ac').onclick=conn;$('ask').onclick=()=>{const v=$('q').value;if(v)cmd(v)};$('q').onkeydown=e=>{if(e.key==='Enter')$('ask').click()};
-getAir();getSat();getWx();try{$('ais').value=localStorage.getItem('ais')||''}catch(e){}if($('ais').value)conn();setInterval(getAir,10000);setInterval(getSat,6*3600e3);setInterval(getWx,900000);requestAnimationFrame(frame);
+$('vm').onclick=()=>{if(!SR){say('Voice needs Chrome');return}if(vOn){vOn=0;rec.stop();$('vm').classList.remove('on');return}
+ rec=new SR();rec.continuous=true;rec.lang='en-US';rec.onresult=e=>{const t=e.results[e.results.length-1][0].transcript;say('“'+t.trim()+'”',2500);cmd(t)};rec.onend=()=>{if(vOn)try{rec.start()}catch(x){}};vOn=1;rec.start();$('vm').classList.add('on')};
+// ---- hand control (camera runs hidden, no preview) ----
+let hOn=0,hv=null,hl=null,hTimer=null;const hs={px:0,py:0,pd:0,still:0,dw:0,dx:0,dy:0};
+$('hm').onclick=async()=>{if(hOn){hOn=0;clearInterval(hTimer);$('hm').classList.remove('on');$('cur').style.display='none';if(hv&&hv.srcObject)hv.srcObject.getTracks().forEach(t=>t.stop());return}
+ try{say('Starting hand control…');const V='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',m=await import(V+'/vision_bundle.mjs'),fs=await m.FilesetResolver.forVisionTasks(V+'/wasm');
+  if(!hl)hl=await m.HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:1});
+  hv=document.createElement('video');hv.setAttribute('playsinline','');hv.muted=true;hv.style.cssText='position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:0;top:0';document.body.appendChild(hv);
+  hv.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:320,height:240}});await hv.play();hOn=1;$('hm').classList.add('on');say('Hand control on',1800);
+  hTimer=setInterval(()=>{if(!hOn||hv.readyState<2)return;const r=hl.detectForVideo(hv,performance.now());if(r.landmarks&&r.landmarks[0])gest(r.landmarks[0]);else{hs.pd=0;hs.dw=0;$('cur').style.display='none'}},55)}catch(e){say('Hand control unavailable: '+e.message,6000)}};
+function gest(l){const dst=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),ps=dst(l[0],l[9])||.1,ext=(a,b)=>dst(l[a],l[0])>dst(l[b],l[0])*1.1,idx=ext(8,6),mid=ext(12,10),rng=ext(16,14),pnk=ext(20,18),th=dst(l[4],l[5])>ps*.55,n=[idx,mid,rng,pnk].filter(Boolean).length;
+ const cx=1-(l[0].x+l[9].x)/2,cy=(l[0].y+l[9].y)/2,mx=cx-hs.px,my=cy-hs.py;hs.px=cx;hs.py=cy;const cur=$('cur');let pointing=0;idle=performance.now();
+ if(idx&&th&&!mid&&!rng&&!pnk){const p=dst(l[4],l[8])/ps;if(hs.pd)Z=Math.max(.5,Math.min(9,Z*(1+(p-hs.pd)*2.4)));hs.pd=p;tgt=null;hs.dw=0}else hs.pd=0;
+ if(n===4){hs.dw=0;if(Math.abs(mx)+Math.abs(my)>.006){L0-=mx*200/Math.max(1,Z);T=Math.max(-85,Math.min(85,T+my*120/Math.max(1,Z)));hs.still=0;tgt=null;vx=vy=0}else if(++hs.still>20){setSpin(true);hs.still=0}}else hs.still=0;
+ if(n===0&&!idx){setSpin(false);vx=vy=0;tgt=null;hs.dw=0}
+ if(idx&&!mid&&!rng&&!pnk&&!th){pointing=1;const r=cv.getBoundingClientRect(),X=(1-l[8].x)*r.width,Y=l[8].y*r.height;cur.style.display='block';cur.style.left=(r.left+X)+'px';cur.style.top=(r.top+Y)+'px';
+  if(Math.hypot(X-hs.dx,Y-hs.dy)<28){if(++hs.dw>16){tap(r.left+X,r.top+Y);hs.dw=-30}}else hs.dw=0;hs.dx=X;hs.dy=Y}
+ if(!pointing)cur.style.display='none'}
+getAir();getSat();getWx();conn();setInterval(getAir,10000);setInterval(getSat,6*3600e3);setInterval(getWx,900000);requestAnimationFrame(frame);
 </script></body></html>
