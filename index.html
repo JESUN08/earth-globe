@@ -1,136 +1,124 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Earth Command LIVE</title>
+<title>Earth Live</title>
 <style>
-html,body{margin:0;height:100%;background:#000;overflow:hidden;font:11px ui-monospace,Menlo,Consolas,monospace;color:#9fe8ff;-webkit-user-select:none;user-select:none}
-#g{position:absolute;inset:0}
-.pn{position:absolute;top:26px;bottom:26px;width:190px;background:rgba(4,12,22,.82);border:1px solid #1b6b88;padding:8px;box-sizing:border-box;overflow:auto;transition:transform .25s;backdrop-filter:blur(4px)}
-#L{left:0;transform:translateX(-100%)}#R{right:0;transform:translateX(100%)}
-.pn.open{transform:none}
-.hd{position:absolute;top:50%;margin-top:-40px;width:22px;height:80px;background:rgba(4,12,22,.82);border:1px solid #1b6b88;color:#5fe;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}
-#L .hd{right:-23px;border-radius:0 8px 8px 0}#R .hd{left:-23px;border-radius:8px 0 0 8px}
-#top{position:absolute;top:0;left:0;right:0;height:22px;display:flex;justify-content:center;align-items:center;gap:14px;font-size:10px;background:linear-gradient(#000a,#0000);pointer-events:none;white-space:nowrap}
-#top b{color:#fff;letter-spacing:.15em}
-#bot{position:absolute;bottom:0;left:0;right:0;height:22px;display:flex;justify-content:center;align-items:center;gap:16px;font-size:10px;background:linear-gradient(#0000,#000a);pointer-events:none;white-space:nowrap}
-#bot b{color:#fff}
-h4{margin:8px 0 4px;color:#5fb7d4;font-size:10px;letter-spacing:.12em}
-.ly{display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer}
-.ly i{width:10px;height:10px;border-radius:50%;display:inline-block}
-.ly.off{opacity:.35}.ly span{flex:1}.ly em{font-style:normal;color:#fff}
-.st{font-size:9px;color:#6a8}.st.bad{color:#f88}
-input{width:100%;box-sizing:border-box;background:#06141f;color:#cff;border:1px solid #1b6b88;border-radius:4px;padding:5px;font:inherit;margin:3px 0}
-button.b{background:#0c2a3a;color:#cff;border:1px solid #1b6b88;border-radius:4px;padding:6px 8px;font:inherit;margin:2px 2px 2px 0}
-#log div{padding:2px 0;border-bottom:1px solid #12304a;color:#8cc}
-#ins div{padding:1px 0}#ins b{color:#fff}
-.tz{display:flex;justify-content:space-between}
-#rotm{display:none;position:fixed;inset:0;background:#000e;z-index:9;align-items:center;justify-content:center;text-align:center;font-size:16px;padding:20px}
+:root{--bg:#05080f;--pn:#0c1422;--tx:#d7e3f4;--mu:#7f93ad;--ac:#4cc9f0;--ln:#1d2c44}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
+#app{display:flex;height:100%}
+#g{flex:1;min-width:0;position:relative}
+#side{width:215px;background:var(--pn);border-left:1px solid var(--ln);overflow-y:auto;padding:8px 10px;box-sizing:border-box;flex:none}
+#side.hide{display:none}
+h3{margin:10px 0 5px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.tg{display:flex;flex-wrap:wrap;gap:5px}
+.chip{display:flex;align-items:center;gap:6px;background:#101c30;border:1px solid var(--ln);border-radius:14px;padding:5px 10px;font-size:12px;cursor:pointer}
+.chip i{width:8px;height:8px;border-radius:50%}
+.chip.off{opacity:.4}.chip em{font-style:normal;color:var(--mu);font-size:11px}
+.st{font-size:10px;color:var(--mu);margin:1px 0}.st.bad{color:#ff8a8a}
+.ck{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--ln)}
+.ck b{font-variant-numeric:tabular-nums;font-weight:600}
+input{width:100%;box-sizing:border-box;background:#101c30;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:7px;font:inherit;margin:3px 0}
+button{background:#101c30;color:var(--tx);border:1px solid var(--ln);border-radius:14px;padding:6px 12px;font:inherit}
+#ins div{padding:1px 0;color:var(--mu)}#ins b{color:var(--tx)}
+#hud{position:absolute;left:10px;bottom:8px;color:#9fb4cf;font-size:11px;pointer-events:none;text-shadow:0 0 4px #000}
+#tp{position:absolute;left:10px;top:10px;display:flex;gap:6px}
+#tp button{width:36px;height:36px;border-radius:50%;padding:0;font-size:16px;background:#101c30cc}
+#rotm{display:none;position:fixed;inset:0;background:#05080ff0;z-index:9;align-items:center;justify-content:center;text-align:center;font-size:16px;padding:20px}
 @media (orientation:portrait){#rotm{display:flex}}
 </style></head><body>
 <div id="rotm">&#8635; Turn your phone sideways for the full-screen globe</div>
-<div id="g"></div>
-<div id="top"><b>EARTH COMMAND</b><span id="utc"></span><span id="cnt"></span></div>
-<div id="bot"><span>CENTER <b id="ctr"></b></span><span>ALT <b id="zal"></b></span><span id="clk"></span></div>
-<div class="pn" id="L"><div class="hd" id="hl">&#9776;</div>
-<h4>LAYERS</h4><div id="ly"></div>
-<h4>STYLE</h4><button class="b" id="sty">Neon / Real</button><button class="b" id="rot">Spin</button>
-<h4>SEARCH</h4><input id="q" placeholder="callsign / reg / ship / sat">
-<h4>AIS KEY (aisstream.io)</h4><input id="ak" placeholder="paste free API key"><button class="b" id="ac">Connect ships</button></div>
-<div class="pn" id="R"><div class="hd" id="hr">&#9432;</div>
-<h4>INSPECTOR</h4><div id="ins">Tap a point or the globe for coordinates.</div>
-<h4>WORLD CLOCKS</h4><div id="tzs"></div>
-<h4>EVENT LOG</h4><div id="log"></div></div>
+<div id="app">
+<div id="g"><div id="tp"><button id="spin">&#10073;&#10073;</button><button id="pan">&#9776;</button></div><div id="hud"></div></div>
+<div id="side">
+<h3>Layers</h3><div class="tg" id="ly"></div><div id="sts"></div>
+<h3>Search</h3><input id="q" placeholder="callsign / reg / ship / sat">
+<h3>Selected</h3><div id="ins">Tap a point or the globe.</div>
+<h3>Time zones</h3><div id="tzs"></div>
+<h3>Events</h3><div id="log" class="st"></div>
+<h3>Ships (AIS key)</h3><input id="ak" placeholder="free key from aisstream.io"><button id="ac">Connect</button>
+</div></div>
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.33.1/dist/globe.gl.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@4.1.4/dist/satellite.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),IMG='https://cdn.jsdelivr.net/npm/three-globe/example/img/';
-const LY={air:{n:'Civil aircraft',c:'#00e5ff',on:1},mil:{n:'Military aircraft',c:'#ff3b3b',on:1},sea:{n:'Ships (AIS)',c:'#4d9bff',on:1},sat:{n:'Satellites',c:'#ffd23f',on:1},wx:{n:'Weather grid',c:'#7dffa0',on:1},eq:{n:'Earthquakes',c:'#ffa94d',on:1},tz:{n:'Time zones',c:'#ffd27a',on:0}};
-const S={air:new Map(),mil:new Map(),sea:new Map(),sat:[],wx:[],eq:[]};let sel=null,lastP=[],neon=1;
-const fmt=(a,b)=>`${Math.abs(a).toFixed(3)}°${a>=0?'N':'S'} ${Math.abs(b).toFixed(3)}°${b>=0?'E':'W'}`;
-const dms=v=>{v=Math.abs(v);const d=Math.floor(v),m=Math.floor((v-d)*60);return`${d}°${m}'${((v-d-m/60)*3600).toFixed(1)}"`};
-const G=Globe()($('g')).globeImageUrl(IMG+'earth-night.jpg').bumpImageUrl(IMG+'earth-topology.png').backgroundImageUrl(IMG+'night-sky.png').showAtmosphere(true)
- .pointLat('lat').pointLng('lng').pointAltitude('alt').pointColor('color').pointRadius('r').pointResolution(6).pointLabel('label').onPointClick(pick)
- .pathPoints('pts').pathPointLat(p=>p[0]).pathPointLng(p=>p[1]).pathPointAlt(p=>p[2]).pathColor('color').pathStroke(.6).pathTransitionDuration(0)
- .ringLat('lat').ringLng('lng').ringMaxRadius(d=>d.mag*1.4).ringPropagationSpeed(2).ringRepeatPeriod(1800).ringColor(()=>t=>`rgba(255,160,60,${1-t})`)
- .labelLat('lat').labelLng('lng').labelText('t').labelSize(.8).labelColor(()=>'#ffd27a').labelAltitude(.003).labelResolution(2)
- .onGlobeClick(({lat,lng})=>{sel=null;const h=((new Date().getUTCHours()+new Date().getUTCMinutes()/60+lng/15)+24)%24;$('ins').innerHTML=`<div><b>Map point</b></div><div>${fmt(lat,lng)}</div><div>${dms(lat)}${lat>=0?'N':'S'} ${dms(lng)}${lng>=0?'E':'W'}</div><div>Solar time ≈ ${String(Math.floor(h)).padStart(2,'0')}:${String(Math.floor(h%1*60)).padStart(2,'0')}</div>`})
- .onZoom(p=>ctr(p));
-G.controls().autoRotate=true;G.controls().autoRotateSpeed=.25;G.pointOfView({lat:28,lng:15,altitude:2.2});
-function ctr(p){p=p||G.pointOfView();$('ctr').textContent=fmt(p.lat,p.lng);$('zal').textContent=(p.altitude*6371-6371+6371>0?Math.round(p.altitude*6371):0)+' km'}
-function fit(){G.width(innerWidth).height(innerHeight)}addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,300));fit();
-for(const[a,b]of[['hl','L'],['hr','R']])$(a).onclick=()=>{$(b).classList.toggle('open');$(a).innerHTML=$(b).classList.contains('open')?'&#10005;':(a=='hl'?'&#9776;':'&#9432;')};
-$('rot').onclick=()=>G.controls().autoRotate^=1;
-function applyStyle(){G.globeImageUrl(IMG+(neon?'earth-night.jpg':'earth-blue-marble.jpg')).showGraticules(!!neon).atmosphereColor(neon?'#00e5ff':'#3a7bd5').atmosphereAltitude(neon?.3:.15);rebuild()}
-$('sty').onclick=()=>{neon^=1;$('sty').textContent=neon?'Style: NEON':'Style: REAL';applyStyle()};$('sty').textContent='Style: NEON';
-function st(k,ok,m){const e=$('st_'+k);if(e){e.textContent=m;e.className='st'+(ok?'':' bad')}}
-$('ly').innerHTML=Object.keys(LY).map(k=>`<div class="ly" id="ly_${k}"><i style="background:${LY[k].c}"></i><span>${LY[k].n}<br><small class="st" id="st_${k}">waiting…</small></span><em id="n_${k}">0</em></div>`).join('');
+const LY={air:{n:'Planes',c:'#4cc9f0',on:1},mil:{n:'Military',c:'#ff6b6b',on:1},sea:{n:'Ships',c:'#4aa3ff',on:1},sat:{n:'Satellites',c:'#ffd166',on:1},wx:{n:'Wind',c:'#7dffa0',on:0},eq:{n:'Quakes',c:'#ffa94d',on:1},tz:{n:'Time zones',c:'#ffd27a',on:0},tr:{n:'Trails',c:'#cfe3ff',on:0}};
+const S={air:new Map(),mil:new Map(),sea:new Map(),sat:[],wx:[],eq:[]};let sel=null,lastP=[];
+const fmt=(a,b)=>`${Math.abs(a).toFixed(2)}°${a>=0?'N':'S'} ${Math.abs(b).toFixed(2)}°${b>=0?'E':'W'}`;
+const G=Globe()($('g')).globeImageUrl(IMG+'earth-blue-marble.jpg').bumpImageUrl(IMG+'earth-topology.png').backgroundColor('#05080f')
+ .showAtmosphere(true).atmosphereColor('#4cc9f0').atmosphereAltitude(.2)
+ .pointLat('lat').pointLng('lng').pointAltitude('alt').pointColor('color').pointRadius('r').pointResolution(5).pointLabel('label').onPointClick(pick)
+ .pathPoints('pts').pathPointLat(p=>p[0]).pathPointLng(p=>p[1]).pathPointAlt(p=>p[2]).pathColor('color').pathStroke(.35).pathTransitionDuration(0)
+ .ringLat('lat').ringLng('lng').ringMaxRadius(d=>d.mag*1.2).ringPropagationSpeed(2).ringRepeatPeriod(2000).ringColor(()=>t=>`rgba(255,170,70,${.9-t})`)
+ .labelLat('lat').labelLng('lng').labelText('t').labelSize(.7).labelColor(()=>'#ffd27a').labelAltitude(.003).labelResolution(2)
+ .onGlobeClick(({lat,lng})=>{sel=null;const d=new Date(),h=((d.getUTCHours()+d.getUTCMinutes()/60+lng/15)+24)%24;$('ins').innerHTML=`<div><b>Map point</b></div><div>${fmt(lat,lng)}</div><div>Solar time ≈ ${String(Math.floor(h)).padStart(2,'0')}:${String(Math.floor(h%1*60)).padStart(2,'0')}</div>`})
+ .onZoom(()=>hud());
+G.controls().autoRotate=true;G.controls().autoRotateSpeed=.3;G.pointOfView({lat:28,lng:15,altitude:2.3});
+const hud=()=>{const p=G.pointOfView();$('hud').textContent='Center '+fmt(p.lat,p.lng)+' · drag to spin · pinch to zoom'};
+function fit(){const e=$('g');G.width(e.clientWidth).height(e.clientHeight)}addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,300));fit();
+$('spin').onclick=()=>{const c=G.controls();c.autoRotate=!c.autoRotate;$('spin').innerHTML=c.autoRotate?'&#10073;&#10073;':'&#9654;'};
+$('pan').onclick=()=>{$('side').classList.toggle('hide');setTimeout(fit,50)};
+$('ly').innerHTML=Object.keys(LY).map(k=>`<div class="chip${LY[k].on?'':' off'}" id="ly_${k}"><i style="background:${LY[k].c}"></i>${LY[k].n} <em id="n_${k}"></em></div>`).join('');
+$('sts').innerHTML=['air','mil','sea','sat','wx','eq'].map(k=>`<div class="st" id="st_${k}"></div>`).join('');
 for(const k in LY)$('ly_'+k).onclick=()=>{LY[k].on^=1;$('ly_'+k).classList.toggle('off',!LY[k].on);rebuild()};
-function log(m){const d=document.createElement('div');d.textContent=new Date().toISOString().slice(11,19)+' '+m;$('log').prepend(d);while($('log').children.length>30)$('log').lastChild.remove()}
+function st(k,ok,m){const e=$('st_'+k);if(e){e.textContent=LY[k].n+': '+m;e.className='st'+(ok?'':' bad')}}
+function log(m){const d=document.createElement('div');d.textContent=new Date().toISOString().slice(11,16)+' '+m;$('log').prepend(d);while($('log').children.length>6)$('log').lastChild.remove()}
 const sun=()=>{const d=new Date(),ut=d.getUTCHours()+d.getUTCMinutes()/60,doy=(d-Date.UTC(d.getUTCFullYear(),0,0))/864e5;return[23.44*Math.sin(2*Math.PI*(doy-81)/365),-(ut-12)*15]};
-const jf=async(u)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(t)}};
-// ---- aircraft: adsb.lol with airplanes.live fallback ----
+const jf=async u=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(t)}};
 function ingest(list,map,kind){const now=Date.now();for(const a of list){if(a.lat==null||a.lon==null)continue;const p=map.get(a.hex),ft=typeof a.alt_baro==='number'?a.alt_baro:0;
  const o={id:a.hex,kind,lat:a.lat,lng:a.lon,ft,gs:a.gs,trk:a.track,name:(a.flight||'').trim()||a.r||a.hex,reg:a.r,type:a.t,ts:now,trail:p?p.trail:[]};
- if(!o.trail.length||o.trail.at(-1)[0]!==a.lat)o.trail.push([a.lat,a.lon,.005+Math.min(ft,45000)/45000*.03]);if(o.trail.length>60)o.trail.shift();map.set(a.hex,o)}
+ if(!o.trail.length||o.trail.at(-1)[0]!==a.lat)o.trail.push([a.lat,a.lon,.005+Math.min(ft,45000)/45000*.03]);if(o.trail.length>50)o.trail.shift();map.set(a.hex,o)}
  for(const[k,v]of map)if(now-v.ts>180000)map.delete(k);if(map.size>6000)for(const k of[...map.keys()].slice(0,map.size-6000))map.delete(k)}
-async function tryBoth(path,map,kind,key){for(const base of['https://api.adsb.lol','https://api.airplanes.live']){try{const j=await jf(base+path);ingest(j.ac||j.aircraft||[],map,kind);st(key,1,'live · '+map.size+(base.includes('lol')?'':' (alt feed)'));return}catch(e){st(key,0,'error: '+e.message)}}}
+async function tryBoth(path,map,kind){for(const b of['https://api.adsb.lol','https://api.airplanes.live']){try{ingest((await jf(b+path)).ac||[],map,kind);st(kind,1,'live '+map.size);return}catch(e){st(kind,0,e.message)}}}
 const hubs=[[40.6,-73.8],[51.5,-.5],[25.2,55.4],[1.4,103.9],[35.5,139.8],[33.9,-118.4],[50,8.6],[28.5,77.1],[-33.9,151.2],[-23.5,-46.5]];let hn=0;
-async function getAir(){const p=G.pointOfView(),pts=[[p.lat,p.lng],hubs[hn%hubs.length],hubs[(hn+3)%hubs.length]];hn++;for(const q of pts)await tryBoth(`/v2/point/${q[0].toFixed(2)}/${q[1].toFixed(2)}/250`,S.air,'air','air')}
-const getMil=()=>tryBoth('/v2/mil',S.mil,'mil','mil');
-// ---- satellites ----
-async function getSat(){try{const out=[];for(const g of['stations','visual','gps-ops','geo']){const t=await(await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=tle`)).text(),L=t.split(/\r?\n/).filter(Boolean);
+async function getAir(){const p=G.pointOfView();for(const q of[[p.lat,p.lng],hubs[hn%10],hubs[(hn+3)%10]])await tryBoth(`/v2/point/${q[0].toFixed(2)}/${q[1].toFixed(2)}/250`,S.air,'air');hn++}
+const getMil=()=>tryBoth('/v2/mil',S.mil,'mil');
+async function getSat(){try{const out=[];for(const g of['stations','visual','gps-ops','geo']){const L=(await(await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=tle`)).text()).split(/\r?\n/).filter(Boolean);
  for(let i=0;i+2<L.length;i+=3)try{out.push({kind:'sat',name:L[i].trim(),rec:satellite.twoline2satrec(L[i+1],L[i+2]),grp:g})}catch(e){}}
- if(!out.length)throw new Error('no TLE');S.sat=out;st('sat',1,'TLE · '+out.length)}catch(e){st('sat',0,'error: '+e.message)}}
-// ---- weather ----
+ if(!out.length)throw new Error('no data');S.sat=out;st('sat',1,out.length+' tracked')}catch(e){st('sat',0,e.message)}}
 async function getWx(){try{const la=[],lo=[];for(let a=-75;a<=75;a+=15)for(let b=-180;b<180;b+=15){la.push(a);lo.push(b)}
  const r=await jf(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,wind_speed_10m,wind_direction_10m`);
- S.wx=(Array.isArray(r)?r:[r]).map(x=>({kind:'wx',name:'Weather cell',lat:x.latitude,lng:x.longitude,w:x.current.wind_speed_10m,dir:x.current.wind_direction_10m,t:x.current.temperature_2m}));st('wx',1,'model · '+S.wx.length)}catch(e){st('wx',0,'error: '+e.message)}}
-// ---- quakes ----
+ S.wx=(Array.isArray(r)?r:[r]).map(x=>({kind:'wx',name:'Weather',lat:x.latitude,lng:x.longitude,w:x.current.wind_speed_10m,dir:x.current.wind_direction_10m,t:x.current.temperature_2m}));st('wx',1,'live')}catch(e){st('wx',0,e.message)}}
 const seen=new Set();async function getEq(){try{const j=await jf('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson');
- S.eq=j.features.map(f=>({lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],mag:f.properties.mag,place:f.properties.place}));
- for(const f of j.features.slice(0,8))if(!seen.has(f.id)){seen.add(f.id);log(`M${f.properties.mag} ${f.properties.place}`)}st('eq',1,'USGS · '+S.eq.length)}catch(e){st('eq',0,'error: '+e.message)}}
-// ---- ships ----
-let ws;function conn(){const k=$('ak').value.trim();if(!k){st('sea',0,'needs AIS key (left bar)');return}try{localStorage.setItem('ak',k)}catch(e){}
+ S.eq=j.features.map(f=>({lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],mag:f.properties.mag}));
+ for(const f of j.features.slice(0,5))if(!seen.has(f.id)){seen.add(f.id);log(`M${f.properties.mag} ${f.properties.place}`)}st('eq',1,'live')}catch(e){st('eq',0,e.message)}}
+let ws;function conn(){const k=$('ak').value.trim();if(!k){st('sea',0,'needs AIS key');return}try{localStorage.setItem('ak',k)}catch(e){}
  if(ws)ws.close();ws=new WebSocket('wss://stream.aisstream.io/v0/stream');
  ws.onopen=()=>{ws.send(JSON.stringify({APIKey:k,BoundingBoxes:[[[-90,-180],[90,180]]],FilterMessageTypes:['PositionReport']}));st('sea',1,'connected')};
  ws.onmessage=e=>{try{const m=JSON.parse(e.data),p=m.Message.PositionReport,id=m.MetaData.MMSI,o=S.sea.get(id);
   const v={id,kind:'sea',lat:p.Latitude,lng:p.Longitude,name:(m.MetaData.ShipName||'').trim()||String(id),sog:p.Sog,cog:p.Cog,ts:Date.now(),trail:o?o.trail:[]};
-  v.trail.push([v.lat,v.lng,.003]);if(v.trail.length>40)v.trail.shift();S.sea.set(id,v);if(S.sea.size>4000)S.sea.delete(S.sea.keys().next().value)}catch(x){}};
- ws.onerror=()=>st('sea',0,'AIS blocked/error');ws.onclose=()=>st('sea',0,'AIS closed')}
+  v.trail.push([v.lat,v.lng,.003]);if(v.trail.length>30)v.trail.shift();S.sea.set(id,v);if(S.sea.size>4000)S.sea.delete(S.sea.keys().next().value)}catch(x){}};
+ ws.onerror=()=>st('sea',0,'blocked or bad key');ws.onclose=()=>st('sea',0,'closed')}
 $('ac').onclick=conn;try{$('ak').value=localStorage.getItem('ak')||''}catch(e){}
-// ---- scene ----
-const ramp=w=>`hsl(${Math.max(0,120-w*2.4)},95%,58%)`;
-function rebuild(){try{const K=neon?1.8:1,P=[],now=new Date(),gm=satellite.gstime(now);
- if(LY.air.on)for(const o of S.air.values())P.push({...o,alt:o.trail.at(-1)[2],color:LY.air.c,r:.28*K,label:`${o.name}<br>${Math.round(o.ft)} ft · ${o.gs||'?'} kt`});
- if(LY.mil.on)for(const o of S.mil.values())P.push({...o,alt:o.trail.at(-1)[2],color:LY.mil.c,r:.4*K,label:`MIL ${o.name}<br>${o.type||''} ${Math.round(o.ft)} ft`});
- if(LY.sea.on)for(const o of S.sea.values())P.push({...o,alt:.004,color:LY.sea.c,r:.25*K,label:`${o.name}<br>${o.sog} kn`});
+const ramp=w=>`hsl(${Math.max(0,120-w*2.4)},90%,60%)`;
+function rebuild(){try{const P=[],now=new Date(),gm=satellite.gstime(now);
+ if(LY.air.on)for(const o of S.air.values())P.push({...o,alt:o.trail.at(-1)[2],color:LY.air.c,r:.2,label:`${o.name}<br>${Math.round(o.ft)} ft · ${o.gs||'?'} kt`});
+ if(LY.mil.on)for(const o of S.mil.values())P.push({...o,alt:o.trail.at(-1)[2],color:LY.mil.c,r:.32,label:`MIL ${o.name}<br>${o.type||''} ${Math.round(o.ft)} ft`});
+ if(LY.sea.on)for(const o of S.sea.values())P.push({...o,alt:.004,color:LY.sea.c,r:.18,label:`${o.name}<br>${o.sog} kn`});
  let ns=0;if(LY.sat.on)for(const s of S.sat){const pv=satellite.propagate(s.rec,now);if(!pv.position)continue;const g=satellite.eciToGeodetic(pv.position,gm);
   s.lat=satellite.degreesLat(g.latitude);s.lng=satellite.degreesLong(g.longitude);s.h=g.height;s.v=Math.hypot(pv.velocity.x,pv.velocity.y,pv.velocity.z);
-  P.push({...s,alt:Math.log10(1+g.height/1000)*.12,color:LY.sat.c,r:.5*K,label:s.name+'<br>'+Math.round(g.height)+' km'});ns++}
- if(LY.wx.on)for(const w of S.wx)P.push({...w,alt:.002,color:ramp(w.w),r:.9,label:`${w.w} km/h wind from ${w.dir}° · ${w.t}°C`});
- const[sl,sg]=sun();P.push({kind:'sun',lat:sl,lng:sg,alt:.04,color:'#ffe066',r:1.6,label:'Sun overhead '+fmt(sl,sg)});
+  P.push({...s,alt:Math.log10(1+g.height/1000)*.12,color:LY.sat.c,r:.4,label:s.name+'<br>'+Math.round(g.height)+' km'});ns++}
+ if(LY.wx.on)for(const w of S.wx)P.push({...w,alt:.002,color:ramp(w.w),r:.6,label:`${w.w} km/h from ${w.dir}° · ${w.t}°C`});
+ const[sl,sg]=sun();P.push({kind:'sun',lat:sl,lng:sg,alt:.04,color:'#ffe066',r:1.1,label:'Sun overhead'});
  lastP=P;G.pointsData(P);
- const paths=[];if(LY.tz.on)for(let k=-12;k<=12;k++){const a=[];for(let l=-85;l<=85;l+=5)a.push([l,k*15,.002]);paths.push({pts:a,color:'rgba(255,210,120,.5)'})}
- if(neon){let n=0;for(const k of['mil','air','sea'])if(LY[k].on)for(const o of S[k].values()){if(o.trail.length>1&&n++<450)paths.push({pts:o.trail,color:LY[k].c+'99'})}}
- if(sel){const tr=trailOf(sel);if(tr)paths.push({pts:tr,color:'#ffffff'})}
+ const paths=[];if(LY.tz.on)for(let k=-12;k<=12;k++){const a=[];for(let l=-85;l<=85;l+=5)a.push([l,k*15,.002]);paths.push({pts:a,color:'rgba(255,210,120,.45)'})}
+ if(LY.tr.on){let n=0;for(const k of['mil','air','sea'])if(LY[k].on)for(const o of S[k].values())if(o.trail.length>1&&n++<400)paths.push({pts:o.trail,color:LY[k].c+'88'})}
+ if(sel){const t=trailOf(sel);if(t)paths.push({pts:t,color:'#ffffff'})}
  G.pathsData(paths);G.labelsData(LY.tz.on?Array.from({length:25},(_,i)=>({lat:0,lng:(i-12)*15,t:'UTC'+(i-12>=0?'+':'')+(i-12)})):[]);G.ringsData(LY.eq.on?S.eq:[]);
- for(const k of['air','mil','sea'])$('n_'+k).textContent=S[k].size;$('n_sat').textContent=ns;$('n_wx').textContent=S.wx.length;$('n_eq').textContent=S.eq.length;$('n_tz').textContent=25;
- $('cnt').textContent=`AIR ${S.air.size} · MIL ${S.mil.size} · SEA ${S.sea.size} · SAT ${ns}`;ctr();if(sel)inspect()}catch(e){log('render: '+e.message)}}
+ for(const k of['air','mil','sea'])$('n_'+k).textContent=S[k].size;$('n_sat').textContent=ns;$('n_eq').textContent=S.eq.length;$('n_wx').textContent=S.wx.length||'';
+ hud();if(sel)inspect()}catch(e){log('render: '+e.message)}}
 function trailOf(o){if(o.kind==='sat'){const per=2*Math.PI/o.rec.no,a=[],t0=Date.now();for(let m=0;m<=Math.min(per,1500);m+=2){const d=new Date(t0+m*6e4),pv=satellite.propagate(o.rec,d);if(!pv.position)continue;const g=satellite.eciToGeodetic(pv.position,satellite.gstime(d));a.push([satellite.degreesLat(g.latitude),satellite.degreesLong(g.longitude),Math.log10(1+g.height/1000)*.12])}return a}
  if(!S[o.kind]||!S[o.kind].get)return null;const c=S[o.kind].get(o.id);return c&&c.trail.length>1?c.trail:null}
-function pick(d){if(!d||d.kind==='sun')return;sel=d;inspect();G.pointOfView({lat:d.lat,lng:d.lng,altitude:1.3},900);G.controls().autoRotate=false;$('R').classList.add('open');$('hr').innerHTML='&#10005;';rebuild()}
-function inspect(){const o=sel;let h=`<div><b>${o.name||o.kind}</b> [${o.kind.toUpperCase()}]</div><div>${fmt(o.lat,o.lng)}</div><div>${dms(o.lat)}${o.lat>=0?'N':'S'} ${dms(o.lng)}${o.lng>=0?'E':'W'}</div>`;
- if(o.kind==='air'||o.kind==='mil')h+=`<div>alt ${Math.round(o.ft)} ft · spd ${o.gs||'?'} kt · hdg ${o.trk??'?'}°</div><div>reg ${o.reg||'?'} · type ${o.type||'?'} · hex ${o.id}</div>`;
- if(o.kind==='sea')h+=`<div>speed ${o.sog} kn · course ${o.cog}° · MMSI ${o.id}</div>`;
- if(o.kind==='sat')h+=`<div>alt ${Math.round(o.h||0)} km · speed ${(o.v||0).toFixed(2)} km/s</div><div>period ${(2*Math.PI/o.rec.no).toFixed(1)} min · ${o.grp}</div>`;
- if(o.kind==='wx')h+=`<div>wind ${o.w} km/h from ${o.dir}° · ${o.t}°C</div>`;
+function pick(d){if(!d||d.kind==='sun')return;sel=d;$('side').classList.remove('hide');inspect();G.pointOfView({lat:d.lat,lng:d.lng,altitude:1.4},900);G.controls().autoRotate=false;$('spin').innerHTML='&#9654;';rebuild()}
+function inspect(){const o=sel;let h=`<div><b>${o.name}</b> · ${o.kind}</div><div>${fmt(o.lat,o.lng)}</div>`;
+ if(o.kind==='air'||o.kind==='mil')h+=`<div>${Math.round(o.ft)} ft · ${o.gs||'?'} kt · hdg ${o.trk??'?'}°</div><div>${o.reg||''} ${o.type||''}</div>`;
+ if(o.kind==='sea')h+=`<div>${o.sog} kn · course ${o.cog}°</div>`;
+ if(o.kind==='sat')h+=`<div>${Math.round(o.h||0)} km · ${(o.v||0).toFixed(2)} km/s</div><div>orbit ${(2*Math.PI/o.rec.no).toFixed(0)} min</div>`;
+ if(o.kind==='wx')h+=`<div>${o.w} km/h from ${o.dir}° · ${o.t}°C</div>`;
  $('ins').innerHTML=h}
-$('q').onkeydown=e=>{if(e.key!=='Enter')return;const t=e.target.value.toLowerCase(),m=lastP.find(p=>p.kind!=='sun'&&p.kind!=='wx'&&((p.name||'')+(p.reg||'')+(p.id||'')).toLowerCase().includes(t));m?pick(m):log('no match: '+t)};
+$('q').onkeydown=e=>{if(e.key!=='Enter')return;const t=e.target.value.toLowerCase(),m=lastP.find(p=>p.kind!=='sun'&&p.kind!=='wx'&&((p.name||'')+(p.reg||'')+(p.id||'')).toLowerCase().includes(t));m?pick(m):log('no match')};
 const zs=[['UTC','UTC'],['New York','America/New_York'],['London','Europe/London'],['Dubai','Asia/Dubai'],['Delhi','Asia/Kolkata'],['Tokyo','Asia/Tokyo'],['Sydney','Australia/Sydney']];
-$('tzs').innerHTML=zs.map((z,i)=>`<div class="tz"><span>${z[0]}</span><b id="z${i}"></b></div>`).join('');
-function tick(){const d=new Date();$('utc').textContent=d.toISOString().slice(0,19).replace('T',' ')+'Z';$('clk').textContent='SUN '+fmt(...sun());zs.forEach((z,i)=>$('z'+i).textContent=d.toLocaleTimeString('en-GB',{timeZone:z[1]}))}
-tick();setInterval(tick,1000);
-getAir();getMil();getSat();getWx();getEq();if($('ak').value)conn();else st('sea',0,'needs AIS key (left bar)');st('tz',1,'always on');
-setInterval(getAir,10000);setInterval(getMil,15000);setInterval(getWx,900000);setInterval(getEq,120000);setInterval(getSat,6*3600e3);setInterval(rebuild,1000);
-applyStyle();log('Command center online');
+$('tzs').innerHTML=zs.map((z,i)=>`<div class="ck"><span>${z[0]}</span><b id="z${i}"></b></div>`).join('');
+const tick=()=>{const d=new Date();zs.forEach((z,i)=>$('z'+i).textContent=d.toLocaleTimeString('en-GB',{timeZone:z[1]}))};tick();setInterval(tick,1000);
+getAir();getMil();getSat();getWx();getEq();if($('ak').value)conn();else st('sea',0,'needs AIS key');
+setInterval(getAir,10000);setInterval(getMil,15000);setInterval(getWx,900000);setInterval(getEq,120000);setInterval(getSat,6*3600e3);setInterval(rebuild,1000);rebuild();
 </script></body></html>
