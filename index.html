@@ -54,8 +54,8 @@ const CFG={WORKER:'',GEMINI_KEY:''}; // WORKER = your Cloudflare Worker link (wo
 // ================================================================
 const $=id=>document.getElementById(id),D=Math.PI/180,cv=$('c'),g=cv.getContext('2d');
 let ERR='',L0=20,T=22,Z=1,spin=true,W,H,R,idle=0,tgt=null,vx=0,vy=0,tapPt=null,fc=0;
-const ON={pl:1,sh:1,sa:1,wx:1,sp:1,ct:1,co:1,bd:1,tz:0,nt:1};
-const NM={pl:'Planes',sh:'Ships',sa:'Satellites',wx:'Weather',sp:'Space',ct:'Cities',co:'Countries',bd:'Borders',tz:'Time zones',nt:'Day/Night'};
+const ON={pl:1,sh:1,sa:1,wx:1,sp:1,ct:1,co:1,bd:1,tz:0,nt:1,sim:1,rt:1};
+const NM={pl:'Planes',sh:'Ships',sa:'Satellites',wx:'Weather',sp:'Space',ct:'Cities',co:'Countries',bd:'Borders',tz:'Time zones',nt:'Day/Night',sim:'Demo data',rt:'Routes & orbits'};
 const C=[['New York',40.71,-74.01,'America/New_York'],['Los Angeles',34.05,-118.24,'America/Los_Angeles'],['Mexico City',19.43,-99.13,'America/Mexico_City'],['Sao Paulo',-23.55,-46.63,'America/Sao_Paulo'],['Buenos Aires',-34.6,-58.38,'America/Argentina/Buenos_Aires'],['London',51.51,-.13,'Europe/London'],['Paris',48.86,2.35,'Europe/Paris'],['Moscow',55.75,37.62,'Europe/Moscow'],['Cairo',30.04,31.24,'Africa/Cairo'],['Lagos',6.52,3.38,'Africa/Lagos'],['Johannesburg',-26.2,28.05,'Africa/Johannesburg'],['Dubai',25.2,55.27,'Asia/Dubai'],['Delhi',28.61,77.21,'Asia/Kolkata'],['Dhaka',23.81,90.41,'Asia/Dhaka'],['Bangkok',13.76,100.5,'Asia/Bangkok'],['Singapore',1.35,103.82,'Asia/Singapore'],['Beijing',39.9,116.4,'Asia/Shanghai'],['Seoul',37.57,126.98,'Asia/Seoul'],['Tokyo',35.68,139.65,'Asia/Tokyo'],['Sydney',-33.87,151.21,'Australia/Sydney'],['Auckland',-36.85,174.76,'Pacific/Auckland'],['Honolulu',21.31,-157.86,'Pacific/Honolulu']];
 const tmc={};const tm=z=>{const k=Math.floor(Date.now()/5000),c=tmc[z];if(c&&c[0]===k)return c[1];const v=new Date().toLocaleTimeString('en-GB',{timeZone:z,hour:'2-digit',minute:'2-digit'});tmc[z]=[k,v];return v};
 const fmt=(a,b)=>`${Math.abs(a).toFixed(2)}°${a>=0?'N':'S'} ${Math.abs(b).toFixed(2)}°${b>=0?'E':'W'}`;
@@ -66,7 +66,7 @@ addEventListener('resize',rs);addEventListener('orientationchange',()=>setTimeou
 const pj=d3.geoOrthographic().clipAngle(90).precision(.6),pth=d3.geoPath(pj,g),GRAT=d3.geoGraticule10();
 function P(lat,lon,r=1){const f=lat*D,l=(lon-L0)*D,t=T*D,x=r*Math.cos(f)*Math.sin(l),y=r*Math.sin(f),z=r*Math.cos(f)*Math.cos(l);
  const y2=y*Math.cos(t)-z*Math.sin(t),z2=y*Math.sin(t)+z*Math.cos(t);return{x:W/2+x*R,y:H/2-y2*R,z:z2,u:x,w:y2,v:z2>0||(x*x+y2*y2>1)}}
-const front=(lon,lat)=>Math.sin(lat*D)*Math.sin(T*D)+Math.cos(lat*D)*Math.cos(T*D)*Math.cos((lon-L0)*D)>.03;
+const cd=(lon,lat)=>Math.sin(lat*D)*Math.sin(T*D)+Math.cos(lat*D)*Math.cos(T*D)*Math.cos((lon-L0)*D),front=(lon,lat)=>cd(lon,lat)>.03;
 function line(a){g.beginPath();let pen=false;for(const p of a){if(p.v){pen?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);pen=true}else pen=false}}
 // ---- world data (free, no key) ----
 let LAND=null,BORD=null,L5=null,B5=null,CTRY=[],PLACES=[];
@@ -87,10 +87,10 @@ async function getJ(path){for(const b of['https://api.adsb.lol','https://api.air
 const hubs=[[40.6,-73.8],[51.5,-.5],[25.2,55.4],[1.4,103.9],[35.5,139.8],[33.9,-118.4],[50,8.6],[28.5,77.1],[-33.9,151.2],[-23.5,-46.5]];let hn=0;
 async function getAir(){try{const lat=Math.max(-85,Math.min(85,T)),lon=((L0+540)%360)-180;
  for(const q of[[lat,lon],hubs[hn%10],hubs[(hn+3)%10]])ingest((await getJ(`/v2/point/${q[0].toFixed(2)}/${q[1].toFixed(2)}/250`)).ac||[],0);hn++;
- ingest((await getJ('/v2/mil')).ac||[],1);msg.pl='live · '+air.size+' aircraft'}catch(e){msg.pl='feed offline'}}
+ ingest((await getJ('/v2/mil')).ac||[],1);msg.pl='live · '+air.size+' aircraft'}catch(e){msg.pl='feed offline';if(!getAir.w){getAir.w=1;say('Planes feed offline',5000)}}}
 async function getSat(){const G_=['stations','visual','gps-ops','geo'];let txt=null,old=null;try{old=JSON.parse(localStorage.getItem('tle')||'null');if(old&&Date.now()-old.t<108e5)txt=old.d}catch(e){}
  try{if(!txt){txt={};for(const grp of G_)txt[grp]=await(await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${grp}&FORMAT=tle`)).text();try{localStorage.setItem('tle',JSON.stringify({t:Date.now(),d:txt}))}catch(e){}}}catch(e){if(old)txt=old.d}
- if(!txt){msg.sa='feed offline (CelesTrak)';return}
+ if(!txt){msg.sa='feed offline (CelesTrak)';say('Satellite feed offline',5000);return}
  const out=[];for(const grp in txt){const L=txt[grp].split(/\r?\n/).filter(Boolean);for(let i=0;i+2<L.length;i+=3)try{out.push({k:'sa',n:L[i].trim(),rec:satellite.twoline2satrec(L[i+1],L[i+2]),grp})}catch(e){}}
  if(!out.length){msg.sa='no orbit data';return}sats=out;msg.sa='live orbits · '+out.length}
 function satPos(s,d,gm){const pv=satellite.propagate(s.rec,d);if(!pv.position)return false;const gd=satellite.eciToGeodetic(pv.position,gm);s.lat=satellite.degreesLat(gd.latitude);s.lon=satellite.degreesLong(gd.longitude);s.h=gd.height;s.v=Math.hypot(pv.velocity.x,pv.velocity.y,pv.velocity.z);return true}
@@ -110,11 +110,53 @@ async function getWx(){try{const la=[],lo=[];for(let a=-75;a<=75;a+=15)for(let b
  const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,wind_speed_10m,wind_direction_10m,pressure_msl`).then(r=>r.json());
  wx=(Array.isArray(r)?r:[r]).map(x=>({lat:x.latitude,lon:x.longitude,w:x.current.wind_speed_10m,d:x.current.wind_direction_10m,t:x.current.temperature_2m,p:x.current.pressure_msl}));wxOK=1}catch(e){wxOK=0}}
 function card(o){const e=$('sel');if(!o){e.style.display='none';return}e.style.display='block';
- let h=`<b>${o.n}</b> · ${o.k==='pl'?(o.mil?'MILITARY AIRCRAFT':'AIRCRAFT'):o.k==='sh'?'SHIP':'SATELLITE'}<br>${fmt(o.lat,o.lon)}<br>`;
+ let h=`<b>${o.n}</b> · ${o.k==='pl'?(o.mil?'MILITARY AIRCRAFT':'AIRCRAFT'):o.k==='sh'?'SHIP':'SATELLITE'}${o.sim?' · DEMO DATA':''}<br>${fmt(o.lat,o.lon)}<br>`;
  if(o.k==='pl')h+=`Speed ${o.gs!=null?SPD(o.gs*.5144):'n/a'}<br>Altitude ${Math.round(o.ft)} ft (${Math.round(o.ft*.3048)} m)<br>Heading ${o.trk!=null?o.trk:'?'}° · ${o.reg||''} ${o.type||''}`;
  if(o.k==='sh')h+=`Speed ${SPD(o.sog*.5144)}<br>Course ${o.cog}° · MMSI ${o.id}`;
- if(o.k==='sa')h+=`Speed ${o.v.toFixed(2)} km/s (${Math.round(o.v*3600).toLocaleString()} km/h)<br>Altitude ${Math.round(o.h)} km · orbit ${(2*Math.PI/o.rec.no).toFixed(0)} min`;
+ if(o.k==='sa')h+=`Speed ${o.v.toFixed(2)} km/s (${Math.round(o.v*3600).toLocaleString()} km/h)<br>Altitude ${Math.round(o.h)} km · orbit ${(o.sim?o.per:2*Math.PI/o.rec.no).toFixed(0)} min`;
  e.innerHTML=h}
+// ---- demo traffic (simulated, but realistic: real airport routes, real shipping lanes, real orbits and speeds) ----
+const rnd=(()=>{let a=20261108;return()=>((a=(a*1664525+1013904223)>>>0)/4294967296)})();
+const simPl=()=>ON.sim&&air.size<20,simSh=()=>ON.sim&&!(CFG.WORKER&&sea.size>=50);
+const AP={ATL:[33.64,-84.43],LAX:[33.94,-118.41],ORD:[41.98,-87.9],DFW:[32.9,-97.04],JFK:[40.64,-73.78],SFO:[37.62,-122.38],SEA:[47.45,-122.31],MIA:[25.79,-80.29],YYZ:[43.68,-79.63],MEX:[19.44,-99.07],GRU:[-23.43,-46.47],EZE:[-34.82,-58.54],BOG:[4.7,-74.15],SCL:[-33.39,-70.79],LHR:[51.47,-.45],CDG:[49.01,2.55],FRA:[50.03,8.57],AMS:[52.31,4.76],MAD:[40.47,-3.56],IST:[41.27,28.75],SVO:[55.97,37.41],DXB:[25.25,55.36],DOH:[25.27,51.61],CAI:[30.12,31.4],JNB:[-26.14,28.24],ADD:[8.98,38.8],LOS:[6.58,3.32],NBO:[-1.32,36.93],DEL:[28.56,77.1],BOM:[19.09,72.87],SIN:[1.36,103.99],BKK:[13.69,100.75],KUL:[2.75,101.71],CGK:[-6.13,106.66],HKG:[22.31,113.91],PEK:[40.08,116.58],PVG:[31.14,121.81],ICN:[37.46,126.44],HND:[35.55,139.78],SYD:[-33.94,151.18],MEL:[-37.67,144.84],AKL:[-37.01,174.79],HNL:[21.32,-157.92]};
+const APK=Object.keys(AP),AL=['UAL','DAL','AAL','BAW','DLH','AFR','KLM','UAE','QTR','SIA','ANA','QFA','THY','ETH','AIC','CCA','CPA','KAL','LAN','ACA'],TY=['B738','A320','B77W','A359','B789','A388','B744','A333','B38M','A21N'];
+function gcv(a,b){const A=a.map(x=>x*D),B=b.map(x=>x*D),va=[Math.cos(A[0])*Math.sin(A[1]),Math.sin(A[0]),Math.cos(A[0])*Math.cos(A[1])],vb=[Math.cos(B[0])*Math.sin(B[1]),Math.sin(B[0]),Math.cos(B[0])*Math.cos(B[1])];return{va,vb,d:Math.acos(Math.max(-1,Math.min(1,va[0]*vb[0]+va[1]*vb[1]+va[2]*vb[2])))}}
+function gcAt(r,f){const s=Math.sin(r.d),k1=Math.sin((1-f)*r.d)/s,k2=Math.sin(f*r.d)/s,v=[0,1,2].map(i=>k1*r.va[i]+k2*r.vb[i]);return[Math.asin(v[1])/D,Math.atan2(v[0],v[2])/D]}
+function brg(a,b){const p1=a[0]*D,p2=b[0]*D,dl=(b[1]-a[1])*D;return Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))/D}
+const hav=(a,b)=>{const p1=a[0]*D,p2=b[0]*D,dp=p2-p1,dl=(b[1]-a[1])*D,h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 12742*Math.asin(Math.sqrt(h))};
+const simAir=[];for(let i=0;i<190;i++){let a,b,r,km;for(;;){a=APK[Math.floor(rnd()*APK.length)];b=APK[Math.floor(rnd()*APK.length)];if(a===b)continue;r=gcv(AP[a],AP[b]);km=r.d*6371;if(km>1800&&km<13500)break}
+ const mil=i<7;simAir.push({k:'pl',sim:1,id:'S'+i,r,km,f0:rnd(),kt:mil?440+rnd()*40:445+rnd()*55,cr:mil?28000+Math.floor(rnd()*8)*1000:32000+Math.floor(rnd()*8)*1000,n:mil?'RCH'+(100+Math.floor(rnd()*899)):AL[Math.floor(rnd()*AL.length)]+(100+Math.floor(rnd()*8899)),type:mil?'C17':TY[Math.floor(rnd()*TY.length)],reg:'',mil,tr:[],lat:0,lon:0,trk:0,ft:0,gs:0})}
+const LN=[
+[[31,123],[25,122],[14,112],[5,106],[1.2,104.5],[2.5,101.2],[4.5,98.5],[6,94],[6.5,88],[5.8,80.5],[8,72],[12,56],[12.5,47],[12.7,43.4],[15,41.5],[20,38],[25,35.5],[28,33.6],[29.9,32.55],[31.6,32.4],[34,26],[35,18],[35,13.5],[36.2,11.5],[37.7,11.2],[38.3,8.5],[38,5],[37.5,1],[36.5,-1.3],[36.1,-3.5],[35.95,-5.6],[36.4,-8],[36.9,-9.7],[41,-9.9],[43.6,-9.9],[45.5,-6],[48.3,-5.6],[49.6,-3.5],[50.2,-1],[51,1.3],[51.5,2.8],[51.97,3.9]],
+[[35,141],[38,152],[42,165],[45,180],[46,200],[42,215],[36,230],[33.6,241.5]],
+[[51.97,3.9],[51.5,2.8],[50.2,-1],[49.7,-4.5],[48.5,-9],[47,-20],[45,-35],[42,-52],[40.5,-65],[40.4,-73.8]],
+[[36.4,-8],[34,-10.5],[26,-17.5],[15,-18.5],[8,-15],[4,-10],[1,-3],[-3,3],[-8,5],[-15,8],[-25,12],[-32,16],[-35.3,20],[-36,26],[-32,32.5],[-25,36],[-18,41.5],[-12,47],[-5,52],[2,57],[10,63],[16,68],[18.8,71.5]],
+[[33.6,-118.5],[27,-114.5],[20,-107],[14,-97],[9,-88],[7,-80.5],[8.7,-79.5],[9.4,-79.9],[12,-79],[16,-80],[19.5,-83.5],[21.7,-85.9],[24.2,-83.2],[23.9,-82],[25.3,-79.8],[28,-79.5],[33,-76.5],[37,-74],[40.3,-73.6]],
+[[29.2,48.8],[27.5,50.2],[26.3,52.5],[26.4,55.3],[26.6,56.4],[25.6,57.3],[22,62],[19,68],[18.9,71.5]],
+[[1.2,104.5],[-1.5,108],[-5,110.3],[-5.8,113.5],[-7.4,115.7],[-8.8,115.9],[-12,116.5],[-17,117.5],[-19.8,118.4]],
+[[-24.2,-46.2],[-22,-39],[-10,-33],[0,-30],[10,-27],[22,-22],[30,-14],[36.4,-9.5],[43.6,-9.9],[48.5,-9],[49.7,-4.5],[50.2,-1],[51.5,2.8],[51.97,3.9]]];
+const NA1=['PACIFIC','ATLANTIC','NORDIC','GLOBAL','ORIENT','STAR','OCEAN','MERIDIAN','HARBOR','NORTHERN'],NA2=['TRADER','VOYAGER','CARRIER','SPIRIT','PIONEER','HARMONY','FORTUNE','EXPRESS','GLORY','HORIZON'];
+const simSea=[];LN.forEach((ln,li)=>{ln.cum=[0];for(let i=0;i<ln.length-1;i++)ln.cum.push(ln.cum[i]+hav(ln[i],ln[i+1]));ln.len=ln.cum[ln.cum.length-1];
+ for(let k=0;k<12;k++){const tank=rnd()<.35;simSea.push({k:'sh',sim:1,id:200000000+Math.floor(rnd()*5e8),lane:ln,off:rnd(),dir:rnd()<.5?1:-1,sog:tank?11+rnd()*4:15+rnd()*8,n:NA1[Math.floor(rnd()*10)]+' '+NA2[Math.floor(rnd()*10)],lat:0,lon:0,cog:0,tr:[]})}});
+function lanePos(ln,dd){let i=0;while(i<ln.length-2&&ln.cum[i+1]<dd)i++;const u=(dd-ln.cum[i])/((ln.cum[i+1]-ln.cum[i])||1),a=ln[i],b=ln[i+1];return[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u,brg(a,b)]}
+const MU=398600.4418,RE=6371,SS=[];
+function addS(n,h,inc,raan,ph,grp){const a=RE+h;SS.push({k:'sa',sim:1,n,a,h,inc:inc*D,raan:raan*D,ph:ph*D,per:2*Math.PI*Math.sqrt(a**3/MU)/60,v:Math.sqrt(MU/a),grp,lat:0,lon:0})}
+addS('ISS (ZARYA)',420,51.64,40,0,'stations');addS('CSS TIANHE',390,41.47,120,2,'stations');addS('HUBBLE',540,28.47,200,1,'visual');
+for(let p=0;p<8;p++)for(let s=0;s<6;s++)addS('STARLINK-'+(1000+p*6+s),550,53.05,p*45,s*60+p*13,'visual');
+for(let p=0;p<6;p++)for(let s=0;s<3;s++)addS('IRIDIUM '+(100+p*3+s),780,86.4,p*30,s*120+p*20,'visual');
+for(let p=0;p<6;p++)for(let s=0;s<4;s++)addS('GPS BIIF-'+(p*4+s+1),20200,55,p*60,s*90+p*15,'gps-ops');
+for(let p=0;p<3;p++)for(let s=0;s<3;s++)addS('GALILEO-'+(p*3+s+1),23222,56,p*120,s*120+p*40,'gps-ops');
+['NOAA-19','NOAA-20','METOP-C'].forEach((n,i)=>addS(n,850,98.7,i*60,i*100,'visual'));
+for(let i=0;i<12;i++)addS('GEO-'+(i+1),35786,.1,0,i*30,'geo');
+function simSat(o,d,gm){const u=o.ph+Math.sqrt(MU/o.a**3)*d*86400,cu=Math.cos(u),su=Math.sin(u),ci=Math.cos(o.inc),X=Math.cos(o.raan)*cu-Math.sin(o.raan)*su*ci,Y=Math.sin(o.raan)*cu+Math.cos(o.raan)*su*ci,Zc=su*Math.sin(o.inc);o.lat=Math.asin(Zc)/D;o.lon=(((Math.atan2(Y,X)/D-gm)%360)+540)%360-180}
+function simTrack(o){const d0=Date.now()/864e5+2440587.5-2451545,a=[],tmp={...o},n=90,per=Math.min(o.per,1500);for(let i=0;i<=n;i++){const m=per*i/n,dd=d0+m/1440;simSat(tmp,dd,(280.46061837+360.98564736629*dd)%360);a.push([tmp.lat,tmp.lon])}return a}
+function stepSim(now,d,gm){const s=now/1000;
+ if(simPl())for(const o of simAir){const f=(o.f0+s*o.kt*1.852/3600/o.km)%1,q=gcAt(o.r,f),q2=gcAt(o.r,Math.min(1,f+.0008)),m=Math.min(1,f*14,(1-f)*14);
+  o.lat=q[0];o.lon=q[1];o.trk=Math.round((brg(q,q2)+360)%360);o.ft=Math.round(Math.max(800,o.cr*m));o.gs=Math.round(o.kt*(.62+.38*m));
+  if(sel===o){o.tr=[];for(let i=12;i>=0;i--){const p=gcAt(o.r,Math.max(0,f-i*.004));o.tr.push([p[0],p[1]])}}}
+ if(simSh())for(const o of simSea){const ln=o.lane,dd=(((o.off*ln.len+o.dir*s*o.sog*1.852/3600)%ln.len)+ln.len)%ln.len,q=lanePos(ln,dd);o.lat=q[0];o.lon=((q[1]+540)%360)-180;o.cog=Math.round((q[2]+(o.dir<0?180:0)+360)%360);
+  if(sel===o){o.tr=[];for(let i=10;i>=0;i--){const p=lanePos(ln,Math.max(0,Math.min(ln.len,dd-o.dir*i*10)));o.tr.push([p[0],((p[1]+540)%360)-180])}}}
+ if(ON.sa&&ON.sim&&!sats.length)for(const o of SS)simSat(o,d,gm)}
 // ---- Moon ----
 const stars=Array.from({length:140},()=>[Math.random(),Math.random(),Math.random()*1.2+.3]),ob=23.44*D;
 function eq(lam,bet,gm){const x=Math.cos(bet)*Math.cos(lam),y=Math.cos(bet)*Math.sin(lam),z=Math.sin(bet),Y=y*Math.cos(ob)-z*Math.sin(ob),Z_=y*Math.sin(ob)+z*Math.cos(ob);return[Math.asin(Z_)/D,Math.atan2(Y,x)/D-gm]}
@@ -138,6 +180,7 @@ function frame_(now){const t=now/1000;
  g.fillStyle='#05080f';g.fillRect(0,0,W,H);
  if(ON.sp){g.fillStyle='#9fb4cf';for(const s of stars){g.globalAlpha=.25+s[2]*.3;g.fillRect(s[0]*W,s[1]*H,s[2],s[2])}g.globalAlpha=1}
  const jd=Date.now()/864e5+2440587.5,d=jd-2451545,gm=(280.46061837+360.98564736629*d)%360;
+ stepSim(Date.now(),d,gm);
  if(ON.sp)drawMoon(d,gm,false);
  const gl=g.createRadialGradient(cx,cy,R*.95,cx,cy,R*1.18);gl.addColorStop(0,'rgba(76,201,240,.35)');gl.addColorStop(1,'rgba(76,201,240,0)');g.fillStyle=gl;g.beginPath();g.arc(cx,cy,R*1.18,0,7);g.fill();
  const sg=g.createRadialGradient(cx-R*.3,cy-R*.3,R*.1,cx,cy,R);sg.addColorStop(0,'#16406e');sg.addColorStop(1,'#071b36');g.fillStyle=sg;g.beginPath();g.arc(cx,cy,R,0,7);g.fill();
@@ -151,24 +194,37 @@ function frame_(now){const t=now/1000;
  if(ON.wx&&wxOK)for(const c of wx){const a=P(c.lat,c.lon);if(!a.v)continue;g.strokeStyle=`hsla(${Math.max(0,120-c.w*2.4)},90%,62%,.9)`;g.lineWidth=1.2;const ang=(c.d+180)*D,len=4+Math.min(c.w,60)*.28;
    g.beginPath();g.moveTo(a.x,a.y);g.lineTo(a.x+Math.sin(ang)*len,a.y-Math.cos(ang)*len);g.stroke();g.fillStyle=g.strokeStyle;g.fillRect(a.x-1,a.y-1,2,2);
    if(c.p<1000&&c.w>35){g.strokeStyle='rgba(255,90,90,'+(.8-.5*((t%2)/2))+')';g.beginPath();g.arc(a.x,a.y,6+(t%2)*6,0,7);g.stroke()}}
- if(ON.co&&CTRY.length){g.font='11px system-ui';g.fillStyle='rgba(225,240,255,.62)';g.textAlign='center';for(const c of CTRY){if(c.a*Z*Z<.0035||!front(c.c[0],c.c[1]))continue;const p=pj(c.c);g.fillText(c.n,p[0],p[1])}g.textAlign='left'}
+ if(ON.co&&CTRY.length&&Z>=1.5){g.font='11px system-ui';g.fillStyle='rgba(225,240,255,.62)';g.textAlign='center';for(const c of CTRY){if(c.a*Z*Z<.0035)continue;const k=cd(c.c[0],c.c[1]);if(k<.03||Math.acos(Math.min(1,k))>1.3/Z)continue;const p=pj(c.c);g.fillText(c.n,p[0],p[1])}g.textAlign='left'}
  if(ON.ct){g.font='10px system-ui';const lab=Z>1.3;
-  for(const p of PLACES){if(!p.cap&&Z<2.8)continue;if(!front(p.lon,p.lat))continue;const q=pj([p.lon,p.lat]);g.fillStyle=p.cap?'#fff':'#bcd';const s=p.cap?2.2:1.5;g.beginPath();g.arc(q[0],q[1],s,0,7);g.fill();pls.push([q[0],q[1],p]);
-   if(p.cap?lab:Z>3.2){g.fillStyle='#d7e8ff';g.fillText(p.n+(Z>2.6?' '+lt(p):''),q[0]+4,q[1]-3)}}
-  if(!PLACES.length)for(const c of C){const p=P(c[1],c[2]);if(p.v){g.fillStyle='#fff';g.fillRect(p.x-1.5,p.y-1.5,3,3);g.fillStyle='#d7e8ff';g.fillText(c[0],p.x+4,p.y-3)}}}
- if(ON.sh)for(const o of sea.values()){const p=P(o.lat,o.lon,1.004);if(p.v){g.fillStyle='#4aa3ff';g.beginPath();g.moveTo(p.x,p.y-4);g.lineTo(p.x+3.5,p.y+3);g.lineTo(p.x-3.5,p.y+3);g.fill();scr.push([p.x,p.y,o])}}
- if(ON.pl)for(const o of air.values()){const p=P(o.lat,o.lon,1.01);if(!p.v)continue;const h=(o.trk||0)*D;g.fillStyle=o.mil?'#ff4d4d':'#4cc9f0';g.beginPath();
+  if(Z>=2.4)for(const p of PLACES){if(!p.cap&&Z<3.6)continue;const k=cd(p.lon,p.lat);if(k<.03||Math.acos(Math.min(1,k))>1.1/Z)continue;const q=pj([p.lon,p.lat]);g.fillStyle=p.cap?'#fff':'#bcd';const s=p.cap?2.2:1.5;g.beginPath();g.arc(q[0],q[1],s,0,7);g.fill();pls.push([q[0],q[1],p]);
+   {g.fillStyle='#d7e8ff';g.fillText(p.n+(Z>4?' '+lt(p):''),q[0]+4,q[1]-3)}}
+  if(!PLACES.length&&Z>=2.4)for(const c of C){const p=P(c[1],c[2]);if(p.v){g.fillStyle='#fff';g.fillRect(p.x-1.5,p.y-1.5,3,3);g.fillStyle='#d7e8ff';g.fillText(c[0],p.x+4,p.y-3)}}}
+ if(ON.rt){
+  if(ON.sh&&simSh()){g.strokeStyle='rgba(80,160,255,.55)';g.lineWidth=1;g.setLineDash([3,4]);for(const ln of LN){const a=[];for(let i=0;i<=90;i++){const q=lanePos(ln,ln.len*i/90);a.push(P(q[0],((q[1]+540)%360)-180,1.002))}line(a);g.stroke()}g.setLineDash([])}
+  if(ON.pl){g.lineWidth=1;if(simPl()){g.strokeStyle='rgba(255,107,107,.3)';for(const o of simAir){const a=[];for(let i=0;i<=24;i++){const q=gcAt(o.r,i/24);a.push(P(q[0],q[1],1.006+Math.sin(Math.PI*i/24)*.05))}line(a);g.stroke()}}
+   else{let n=0;g.strokeStyle='rgba(255,107,107,.45)';for(const o of air.values()){if(o.tr.length<2||(!o.mil&&n>350))continue;n++;line(o.tr.map(q=>P(q[0],q[1],1.01)));g.stroke()}}}
+  if(ON.sa){const seen=new Set(),use=sats.length?sats:SS;g.lineWidth=.9;
+   for(const s_ of use){let inc,raan,h;if(s_.rec){inc=s_.rec.inclo;raan=s_.rec.nodeo;const nn=s_.rec.no/60;h=Math.cbrt(MU/(nn*nn))-RE}else{inc=s_.inc;raan=s_.raan;h=s_.h}
+    const key=Math.round(inc*30)+'_'+Math.round(raan*8)+'_'+Math.round(h/150);if(seen.has(key))continue;seen.add(key);
+    g.strokeStyle=s_.grp==='geo'?'rgba(244,166,255,.35)':s_.grp==='gps-ops'?'rgba(184,242,166,.35)':`hsla(${Math.round((raan/D*1.3+inc/D*2.5)%360)},75%,66%,.38)`;
+    const a=[],ci=Math.cos(inc),si=Math.sin(inc),co=Math.cos(raan),so_=Math.sin(raan),rr=satR(h);
+    for(let u=0;u<=6.4;u+=.1){const cu=Math.cos(u),su=Math.sin(u),X=co*cu-so_*su*ci,Y=so_*cu+co*su*ci,Zc=su*si;a.push(P(Math.asin(Zc)/D,Math.atan2(Y,X)/D-gm,rr))}
+    line(a);g.stroke()}}
+ }
+ if(ON.sh)for(const o of [...sea.values(),...(simSh()?simSea:[])]){const p=P(o.lat,o.lon,1.004);if(p.v){g.fillStyle='#4aa3ff';g.beginPath();g.moveTo(p.x,p.y-4);g.lineTo(p.x+3.5,p.y+3);g.lineTo(p.x-3.5,p.y+3);g.fill();scr.push([p.x,p.y,o])}}
+ if(ON.pl)for(const o of [...air.values(),...(simPl()?simAir:[])]){const p=P(o.lat,o.lon,1.01);if(!p.v)continue;const h=(o.trk||0)*D;g.fillStyle=o.mil?'#ff2d2d':'#ff8a8a';g.beginPath();
    g.moveTo(p.x+Math.sin(h)*(o.mil?6:4.5),p.y-Math.cos(h)*(o.mil?6:4.5));g.lineTo(p.x+Math.sin(h+2.6)*3,p.y-Math.cos(h+2.6)*3);g.lineTo(p.x+Math.sin(h-2.6)*3,p.y-Math.cos(h-2.6)*3);g.fill();scr.push([p.x,p.y,o])}
  if(ON.sa&&sats.length){const nd=new Date(),gs_=satellite.gstime(nd);for(const s of sats){if(!satPos(s,nd,gs_))continue;const p=P(s.lat,s.lon,satR(s.h));if(p.v){g.fillStyle=s.grp==='geo'?'#f4a6ff':s.grp==='gps-ops'?'#b8f2a6':'#ffd166';g.beginPath();g.arc(p.x,p.y,/ISS/.test(s.n)?4:2.4,0,7);g.fill();if(/ISS/.test(s.n)){g.font='10px system-ui';g.fillText('ISS',p.x+6,p.y)}scr.push([p.x,p.y,s])}}}
- let so=null;if(sel){so=sel.k==='pl'?air.get(sel.id):sel.k==='sh'?sea.get(sel.id):sel;
-  if(so){if(so.k==='sa'){const per=2*Math.PI/so.rec.no,a=[],st_=Math.max(1,per/90);for(let m=0;m<=Math.min(per,1500);m+=st_){const dd=new Date(Date.now()+m*6e4),pv=satellite.propagate(so.rec,dd);if(!pv.position)continue;const gd=satellite.eciToGeodetic(pv.position,satellite.gstime(dd));a.push(P(satellite.degreesLat(gd.latitude),satellite.degreesLong(gd.longitude),satR(gd.height)))}g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1.2;line(a);g.stroke()}
+ if(ON.sa&&ON.sim&&!sats.length)for(const o of SS){const p=P(o.lat,o.lon,satR(o.h));if(!p.v)continue;g.fillStyle=o.grp==='geo'?'#f4a6ff':o.grp==='gps-ops'?'#b8f2a6':'#ffd166';g.beginPath();g.arc(p.x,p.y,/ISS/.test(o.n)?4:2.4,0,7);g.fill();if(/ISS/.test(o.n)){g.font='10px system-ui';g.fillText('ISS',p.x+6,p.y)}scr.push([p.x,p.y,o])}
+ let so=null;if(sel){so=sel.sim?sel:sel.k==='pl'?air.get(sel.id):sel.k==='sh'?sea.get(sel.id):sel;
+  if(so){if(so.k==='sa'&&so.sim){g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1.2;line(simTrack(so).map(q=>P(q[0],q[1],satR(so.h))));g.stroke()}else if(so.k==='sa'){const per=2*Math.PI/so.rec.no,a=[],st_=Math.max(1,per/90);for(let m=0;m<=Math.min(per,1500);m+=st_){const dd=new Date(Date.now()+m*6e4),pv=satellite.propagate(so.rec,dd);if(!pv.position)continue;const gd=satellite.eciToGeodetic(pv.position,satellite.gstime(dd));a.push(P(satellite.degreesLat(gd.latitude),satellite.degreesLong(gd.longitude),satR(gd.height)))}g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1.2;line(a);g.stroke()}
    else if(so.tr.length>1){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=1.5;line(so.tr.map(q=>P(q[0],q[1],1.01)));g.stroke()}
    const p=P(so.lat,so.lon,so.k==='sa'?satR(so.h):1.01);if(p.v){g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(p.x,p.y,10,0,7);g.stroke()}}}
  if(ON.nt){const p=P(sLat,sLon,1.02);if(p.v){g.fillStyle='#ffd24a';g.beginPath();g.arc(p.x,p.y,4,0,7);g.fill()}}
  if(tapPt){const p=P(tapPt[0],tapPt[1]);if(p.v){g.strokeStyle='#fff';g.lineWidth=1.5;g.beginPath();g.arc(p.x,p.y,7,0,7);g.moveTo(p.x-12,p.y);g.lineTo(p.x+12,p.y);g.moveTo(p.x,p.y-12);g.lineTo(p.x,p.y+12);g.stroke()}}
  if(ON.sp)drawMoon(d,gm,true);
  $('hud').textContent=`${fmt(T,L0)} · ${Z.toFixed(1)}×`;
- if(fc++%15===0){card(so);if(fc%60===1)$('fd').innerHTML=`${ERR?'⚠ '+ERR+'<br>':''}✈ ${msg.pl}<br>🚢 ${msg.sh}<br>🛰 ${msg.sa}<br>☁ weather ${wxOK?'live':'offline'}<br>🗺 ${PLACES.length?PLACES.length+' places':'loading cities…'}`}
+ if(fc++%15===0){card(so);if(fc%60===1)$('fd').innerHTML=`${ERR?'⚠ '+ERR+'<br>':''}✈ ${simPl()?'demo traffic ('+msg.pl+')':msg.pl}<br>🚢 ${msg.sh}${simSh()?' + demo ships':''}<br>🛰 ${(!sats.length&&ON.sim)?'demo orbits ('+msg.sa+')':msg.sa}<br>☁ weather ${wxOK?'live':'offline'}<br>🗺 ${PLACES.length?PLACES.length+' places':'loading cities…'}`}
  }
 // ---- touch ----
 const ptr=new Map();let pd=0,mv=0,down=null;
@@ -202,7 +258,7 @@ $('gm').onclick=()=>open(`https://www.google.com/maps/@${T.toFixed(5)},${L0.toFi
 $('ge').onclick=()=>open(`https://earth.google.com/web/@${T.toFixed(5)},${L0.toFixed(5)},0a,${Math.round(20000000/Z)}d,35y,0h,0t,0r`,'_blank');
 function say(m,ms){const s=$('say');s.textContent=m;s.style.display='block';clearTimeout(say.t);say.t=setTimeout(()=>s.style.display='none',ms||4000)}
 // ---- commands (voice, typing, AI) ----
-const KW={planes:'pl',plane:'pl',aircraft:'pl',flights:'pl',ships:'sh',ship:'sh',satellites:'sa',satellite:'sa',weather:'wx',wind:'wx',moon:'sp',space:'sp',stars:'sp',cities:'ct',city:'ct',borders:'bd',border:'bd',countries:'co','country names':'co','time zones':'tz','time zone':'tz',night:'nt','day night':'nt'};
+const KW={planes:'pl',plane:'pl',aircraft:'pl',flights:'pl',ships:'sh',ship:'sh',satellites:'sa',satellite:'sa',weather:'wx',wind:'wx',moon:'sp',space:'sp',routes:'rt',route:'rt',orbits:'rt',orbit:'rt',lines:'rt',demo:'sim','demo data':'sim',stars:'sp',cities:'ct',city:'ct',borders:'bd',border:'bd',countries:'co','country names':'co','time zones':'tz','time zone':'tz',night:'nt','day night':'nt'};
 function findPlace(tx){const s=' '+tx.replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ')+' ';let best=null,bl=0;
  for(const p of PLACES){const n=p.n.toLowerCase();if(n.length>bl&&s.includes(' '+n+' ')){best={lat:p.lon!==undefined?p.lat:0,lon:p.lon,z:4,p};bl=n.length}}
  for(const c of CTRY){const n=c.n.toLowerCase();if(n.length>=bl&&s.includes(' '+n+' ')){best={lat:c.c[1],lon:c.c[0],z:Math.max(1.2,Math.min(6,.85/Math.sqrt(c.a))),c};bl=n.length}}
